@@ -128,6 +128,16 @@ input{font-family:inherit}
   box-shadow:0 8px 28px rgba(0,0,0,.5)}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--booze);color:#fff}
+
+/* floating refresh */
+.fab-refresh{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));
+  width:52px;height:52px;border-radius:50%;background:var(--energy);color:#04120F;
+  display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);
+  z-index:80;transition:transform .12s, opacity .2s}
+.fab-refresh:active{transform:scale(.92)}
+.fab-refresh.spin{animation:fabspin .7s linear}
+@keyframes fabspin{to{transform:rotate(360deg)}}
 /* projects */
 .proj{background:var(--surface2);border:1px solid var(--border);border-radius:13px;
   padding:14px;margin-bottom:11px}
@@ -270,6 +280,7 @@ input{font-family:inherit}
 </div>
 
 <div class="toast" id="toast"></div>
+<button class="fab-refresh" id="fabRefresh" title="Refresh">⟳</button>
 
 <!-- ============ LOG SHEET ============ -->
 <div class="modal hidden" id="sheetWrap">
@@ -394,6 +405,12 @@ async function signIn(){
   showApp();
 }
 $('signoutBtn').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
+
+/* floating refresh */
+$('fabRefresh').addEventListener('click', ()=>{
+  const b=$('fabRefresh'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
+  loadAll();
+});
 
 (async function boot(){
   const { data } = await sb.auth.getSession();

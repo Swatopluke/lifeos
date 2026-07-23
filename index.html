@@ -128,6 +128,27 @@ input{font-family:inherit}
   box-shadow:0 8px 28px rgba(0,0,0,.5)}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--booze);color:#fff}
+/* projects */
+.proj{background:var(--surface2);border:1px solid var(--border);border-radius:13px;
+  padding:14px;margin-bottom:11px}
+.proj:last-child{margin-bottom:0}
+.proj-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.proj-name{font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px}
+.proj-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.proj-stage{font-size:10px;font-weight:600;color:var(--dim);
+  background:var(--bg);border:1px solid var(--border);padding:2px 9px;border-radius:20px}
+.proj-desc{font-size:11.5px;color:var(--faint);margin:0 0 12px;line-height:1.4}
+.proj-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:7px;margin-bottom:12px}
+.proj-m{background:var(--bg);border-radius:9px;padding:8px 9px}
+.proj-m .pm-lab{font-size:9px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--faint);margin-bottom:3px}
+.proj-m .pm-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.proj-m .pm-sub{font-size:9px;color:var(--faint);margin-top:1px}
+.proj-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+  color:var(--energy);text-decoration:none;padding:7px 11px;border:1px solid var(--border);
+  border-radius:9px;background:var(--bg)}
+.proj-link:hover{border-color:var(--energy)}
+
 .empty{text-align:center;color:var(--faint);font-size:12px;padding:26px 10px}
 .loading{text-align:center;color:var(--faint);font-size:12px;padding:40px}
 </style>
@@ -209,6 +230,12 @@ input{font-family:inherit}
       <div id="goalList"><div class="loading">Loading…</div></div>
     </div>
   </div>
+
+  <div class="card">
+    <h2>Projects</h2>
+    <p class="csub">Coding projects · metrics &amp; tracking</p>
+    <div id="projList"><div class="loading">Loading…</div></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -284,6 +311,25 @@ input{font-family:inherit}
 const SUPABASE_URL = "https://btuoukuuywqmfubjslkv.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Do59CopoxJCpS8B6NVA2Rg_lvxpiU53";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ========= PROJECT SEED (used until a 'projects' table exists in Supabase) ========= */
+const SEED_PROJECTS = [
+  {
+    key:'barsport',
+    name:'BarSport',
+    color:'#3B82F6',
+    stage:'Beta',
+    description:'Flutter/Dart social sports app — darts, tournaments, factions, leaderboards.',
+    url:'https://github.com/Swatopluke/barsport4',
+    link_label:'Repo',
+    metrics:[
+      { label:'LOC', value:'118k', sub:'~540 files' },
+      { label:'Phase', value:'Manual QA', sub:'pre-beta' },
+      { label:'Stack', value:'Riverpod', sub:'freezed · go_router' },
+      { label:'Backend', value:'Supabase', sub:'postgres' }
+    ]
+  }
+];
 
 /* ========= HELPERS ========= */
 const $ = id => document.getElementById(id);
@@ -552,6 +598,36 @@ async function loadAll(){
       <b>${(+v).toFixed(v%1?1:0)}<span style="color:var(--faint)"> / ${t}${g.target_unit||''}</span></b></div>
       <div class="bar"><i style="width:${pct.toFixed(0)}%;background:${CSS(col)}"></i></div></div>`;
   }).join('') || '<div class="empty">Log today to see progress</div>';
+
+  renderProjects();
+}
+
+async function renderProjects(){
+  let rows = SEED_PROJECTS;
+  try {
+    const { data, error } = await sb.from('projects').select('*').order('sort_order');
+    if(!error && data && data.length) rows = data;
+  } catch(e){ /* table missing — keep seed data */ }
+
+  if(!rows || !rows.length){ $('projList').innerHTML = '<div class="empty">No projects yet</div>'; return; }
+
+  const card = p => {
+    const metrics = (p.metrics || []).map(m => `
+      <div class="proj-m"><div class="pm-lab">${m.label}</div>
+        <div class="pm-val" style="color:${p.color||'var(--text)'}">${m.value}</div>
+        ${m.sub?`<div class="pm-sub">${m.sub}</div>`:''}</div>`).join('');
+    const link = p.url ? `<a class="proj-link" href="${p.url}" target="_blank" rel="noopener">↗ ${p.link_label||'Open'}</a>` : '';
+    return `<div class="proj">
+      <div class="proj-head">
+        <div class="proj-name"><span class="proj-dot" style="background:${p.color||'var(--energy)'}"></span>${p.name}</div>
+        ${p.stage?`<span class="proj-stage">${p.stage}</span>`:''}
+      </div>
+      ${p.description?`<p class="proj-desc">${p.description}</p>`:''}
+      ${metrics?`<div class="proj-metrics">${metrics}</div>`:''}
+      ${link}
+    </div>`;
+  };
+  $('projList').innerHTML = rows.map(card).join('');
 }
 </script>
 </body>

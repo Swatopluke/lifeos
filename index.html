@@ -240,6 +240,12 @@ input{font-family:inherit}
     <div class="chartbox" style="height:200px"><canvas id="chIntake"></canvas></div>
   </div>
 
+  <div class="card">
+    <h2>Stimulant clearance</h2>
+    <p class="csub">Live decay from your logged snus &amp; coffee · nicotine t½ 2h · caffeine t½ 5h</p>
+    <div class="chartbox" style="height:200px"><canvas id="chStim"></canvas></div>
+  </div>
+
   <div class="grid2">
     <div class="card">
       <h2>Calories &amp; protein</h2>
@@ -520,7 +526,7 @@ async function loadAll(){
     sb.from('sleep').select('night_of,hours_asleep,quality').gte('night_of',since).order('night_of'),
     sb.from('body_metrics').select('measured_on,weight_kg,neck_cm').gte('measured_on',daysAgoISO(59)).order('measured_on'),
     sb.from('daily_state').select('day,energy,mood,stress,steps').gte('day',since).order('day'),
-    sb.from('intake').select('taken_at,kind,quantity,mg_caffeine,alcohol_units').gte('taken_at',sinceTs),
+    sb.from('intake').select('taken_at,kind,quantity,mg_nicotine,mg_caffeine,alcohol_units').gte('taken_at',sinceTs),
     sb.from('meals').select('eaten_at,kcal,protein_g,carbs_g,fat_g').gte('eaten_at',sinceTs),
     sb.from('supplements').select('*').order('name'),
     sb.from('supplement_log').select('supplement_id,taken_at').gte('taken_at',todayISO()+'T00:00:00Z'),
@@ -611,6 +617,40 @@ async function loadAll(){
     ]},
     options:{...baseOpts, scales:{ x:{...gridOpt, grid:{display:false}},
       y:{...gridOpt, suggestedMax:2600}, y1:{...gridOpt, position:'right', grid:{display:false}, suggestedMax:200} }}});
+
+  /* ---- stimulant clearance ---- */
+  const now = Date.now();
+  const HN = 2.0, HC = 5.0;               // half-lives (h)
+  const decay = (mg0, t0, tHalf, h) => mg0 * Math.pow(0.5, (h - t0)/tHalf);
+  // build hourly x-axis from -6h .. +18h around now
+  const stimH = [];
+  for (let h = -6; h <= 18; h++) stimH.push(h);
+  const labStim = stimH.map(h => (h===0?'now':(h>0?'+'+h:''+h)+'h'));
+  // reference: a single 13mg snus (≈6.5mg nicotine) + 95mg caffeine at h=0
+  const refNic = stimH.map(h => h<0 ? 0 : 6.5 * Math.pow(0.5, h/HN));
+  const refCaf = stimH.map(h => h<0 ? 0 : 95  * Math.pow(0.5, h/HC));
+  // live: sum all logged doses projected onto this axis
+  const liveNic = stimH.map(()=>0), liveCaf = stimH.map(()=>0);
+  (intakeR.data||[]).forEach(r=>{
+    const t0 = (new Date(r.taken_at).getTime() - now)/3600000;  // hours relative to now
+    const mgN = r.kind==='snus'   ? (+r.mg_nicotine||0) : 0;
+    const mgC = r.kind==='caffeine'? (+r.mg_caffeine||0) : 0;
+    stimH.forEach((h,i)=>{ if(h>=t0){ liveNic[i]+=decay(mgN,t0,HN,h); liveCaf[i]+=decay(mgC,t0,HC,h); } });
+  });
+  drawChart('chStim', { data:{ labels:labStim, datasets:[
+      { type:'line', label:'Your nicotine', data:liveNic, borderColor:CSS('--snus'), backgroundColor:CSS('--snus')+'22',
+        fill:true, tension:.3, pointRadius:0, borderWidth:2 },
+      { type:'line', label:'Your caffeine', data:liveCaf, borderColor:CSS('--caf'), backgroundColor:CSS('--caf')+'22',
+        fill:true, tension:.3, pointRadius:0, borderWidth:2 },
+      { type:'line', label:'Ref nicotine (13mg)', data:refNic, borderColor:CSS('--snus'), borderWidth:1.2,
+        borderDash:[5,4], pointRadius:0, tension:.3 },
+      { type:'line', label:'Ref caffeine (95mg)', data:refCaf, borderColor:CSS('--caf'), borderWidth:1.2,
+        borderDash:[5,4], pointRadius:0, tension:.3 }
+    ]},
+    options:{...baseOpts, plugins:{...baseOpts.plugins,
+      legend:{display:true, labels:{boxWidth:9, boxHeight:9, padding:8, usePointStyle:true, pointStyle:'circle'}}},
+      scales:{ x:{...gridOpt, grid:{display:false}, ticks:{maxTicksLimit:8}},
+               y:{...gridOpt, suggestedMin:0, title:{display:false}} }}});
 
   drawChart('chState', { type:'line', data:{ labels, datasets:[
       { label:'Energy', data:days.map(d=>stateMap[d]?.energy ?? null), borderColor:CSS('--energy'),

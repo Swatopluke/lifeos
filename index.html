@@ -639,18 +639,23 @@ async function loadAll(){
   });
   drawChart('chStim', { data:{ labels:labStim, datasets:[
       { type:'line', label:'Your nicotine', data:liveNic, borderColor:CSS('--snus'), backgroundColor:CSS('--snus')+'22',
-        fill:true, tension:.3, pointRadius:0, borderWidth:2 },
+        fill:true, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'yN' },
       { type:'line', label:'Your caffeine', data:liveCaf, borderColor:CSS('--caf'), backgroundColor:CSS('--caf')+'22',
-        fill:true, tension:.3, pointRadius:0, borderWidth:2 },
+        fill:true, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'yC' },
       { type:'line', label:'Ref nicotine (13mg)', data:refNic, borderColor:CSS('--snus'), borderWidth:1.2,
-        borderDash:[5,4], pointRadius:0, tension:.3 },
+        borderDash:[5,4], pointRadius:0, tension:.3, yAxisID:'yN' },
       { type:'line', label:'Ref caffeine (95mg)', data:refCaf, borderColor:CSS('--caf'), borderWidth:1.2,
-        borderDash:[5,4], pointRadius:0, tension:.3 }
+        borderDash:[5,4], pointRadius:0, tension:.3, yAxisID:'yC' }
     ]},
     options:{...baseOpts, plugins:{...baseOpts.plugins,
       legend:{display:true, labels:{boxWidth:9, boxHeight:9, padding:8, usePointStyle:true, pointStyle:'circle'}}},
       scales:{ x:{...gridOpt, grid:{display:false}, ticks:{maxTicksLimit:8}},
-               y:{...gridOpt, suggestedMin:0, title:{display:false}} }}});
+               yN:{...gridOpt, position:'left', suggestedMin:0, suggestedMax:10,
+                   title:{display:true, text:'nicotine (mg)', color:CSS('--snus'), font:{size:9}},
+                   ticks:{color:CSS('--snus'), font:{size:9}} },
+               yC:{...gridOpt, position:'right', suggestedMin:0, suggestedMax:120, grid:{display:false},
+                   title:{display:true, text:'caffeine (mg)', color:CSS('--caf'), font:{size:9}},
+                   ticks:{color:CSS('--caf'), font:{size:9}} } }}});
 
   drawChart('chState', { type:'line', data:{ labels, datasets:[
       { label:'Energy', data:days.map(d=>stateMap[d]?.energy ?? null), borderColor:CSS('--energy'),

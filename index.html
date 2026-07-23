@@ -235,6 +235,17 @@ input{font-family:inherit}
   </div>
 
   <div class="card">
+    <h2>Sleep &amp; steps — history</h2>
+    <p class="csub" id="histSummary">Loading…</p>
+    <div class="seg" id="histRange" style="margin-bottom:12px">
+      <button data-r="90">90D</button>
+      <button data-r="365" class="on">1Y</button>
+      <button data-r="0">All</button>
+    </div>
+    <div class="chartbox" style="height:200px"><canvas id="chHistory"></canvas></div>
+  </div>
+
+  <div class="card">
     <h2>Intake vs sleep</h2>
     <p class="csub">Bars = snus / units / caffeine ÷ 50 · line = hours asleep</p>
     <div class="chartbox" style="height:200px"><canvas id="chIntake"></canvas></div>
@@ -463,6 +474,12 @@ let spVal=0;
 document.querySelectorAll('#sl-sp button').forEach(b=>{
   b.addEventListener('click',()=>{ document.querySelectorAll('#sl-sp button').forEach(x=>x.classList.remove('on'));
     b.classList.add('on'); spVal=+b.dataset.v; });
+});
+
+let histRangeDays=365;
+document.querySelectorAll('#histRange button').forEach(b=>{
+  b.addEventListener('click',()=>{ document.querySelectorAll('#histRange button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); histRangeDays=+b.dataset.r; loadHistory(); });
 });
 const num = el => { const v=$(el).value; return v===''?null:Number(v); };
 const txt = el => { const v=$(el).value.trim(); return v===''?null:v; };
@@ -709,6 +726,57 @@ async function loadAll(){
 
   renderProjects();
   renderCalendar();
+  loadHistory();
+}
+
+/* ---- long-range sleep & steps history (unlocked by the Apple Health backfill) ---- */
+async function loadHistory(){
+  const since = histRangeDays ? daysAgoISO(histRangeDays-1) : '2000-01-01';
+  const [sR, stR] = await Promise.all([
+    sb.from('sleep').select('night_of,hours_asleep').gte('night_of',since).order('night_of').limit(5000),
+    sb.from('daily_state').select('day,steps').gte('day',since).order('day').limit(5000)
+  ]);
+  if(sR.error || stR.error){ $('histSummary').textContent='Load error'; return; }
+
+  const sleepRows = (sR.data||[]).filter(r=>r.hours_asleep!=null);
+  const stepRows  = (stR.data||[]).filter(r=>r.steps!=null);
+
+  if(!sleepRows.length && !stepRows.length){
+    $('histSummary').textContent='No history yet';
+    drawChart('chHistory', { data:{labels:[],datasets:[]}, options:baseOpts });
+    return;
+  }
+
+  const avgSleepAll = sleepRows.length ? sleepRows.reduce((a,r)=>a+(+r.hours_asleep),0)/sleepRows.length : null;
+  const avgStepsAll = stepRows.length ? Math.round(stepRows.reduce((a,r)=>a+(+r.steps),0)/stepRows.length) : null;
+  const firstDate = [sleepRows[0]?.night_of, stepRows[0]?.day].filter(Boolean).sort()[0];
+  $('histSummary').textContent =
+    (avgSleepAll!=null ? avgSleepAll.toFixed(1)+'h avg sleep' : 'no sleep data') + ' · ' +
+    (avgStepsAll!=null ? avgStepsAll.toLocaleString()+' steps/day avg' : 'no step data') +
+    (firstDate ? ' · since '+firstDate : '');
+
+  const monthKey = d => d.slice(0,7);
+  const sleepByMonth={}, stepsByMonth={};
+  sleepRows.forEach(r=>{ const k=monthKey(r.night_of); (sleepByMonth[k]=sleepByMonth[k]||[]).push(+r.hours_asleep); });
+  stepRows.forEach(r=>{ const k=monthKey(r.day); (stepsByMonth[k]=stepsByMonth[k]||[]).push(+r.steps); });
+  const months = Array.from(new Set([...Object.keys(sleepByMonth), ...Object.keys(stepsByMonth)])).sort();
+  const mLabels = months.map(m=>m.slice(2));
+  const mSleep = months.map(m => sleepByMonth[m] ? +(sleepByMonth[m].reduce((a,b)=>a+b,0)/sleepByMonth[m].length).toFixed(2) : null);
+  const mSteps = months.map(m => stepsByMonth[m] ? Math.round(stepsByMonth[m].reduce((a,b)=>a+b,0)/stepsByMonth[m].length) : null);
+
+  drawChart('chHistory', { data:{ labels:mLabels, datasets:[
+      { type:'bar', label:'Avg steps/day', data:mSteps, backgroundColor:CSS('--energy')+'99', borderRadius:3, barPercentage:.7, yAxisID:'y' },
+      { type:'line', label:'Avg sleep h', data:mSleep, borderColor:CSS('--sleep'), borderWidth:2, tension:.3, pointRadius:2, spanGaps:true, yAxisID:'y1' }
+    ]},
+    options:{...baseOpts,
+      plugins:{...baseOpts.plugins, legend:{display:true, labels:{boxWidth:9,boxHeight:9,padding:11,usePointStyle:true,pointStyle:'circle'}}},
+      scales:{ x:{...gridOpt, grid:{display:false}, ticks:{maxTicksLimit:12}},
+               y:{...gridOpt, position:'left', suggestedMin:0,
+                   title:{display:true,text:'steps',color:CSS('--energy'),font:{size:9}},
+                   ticks:{color:CSS('--energy'),font:{size:9}}},
+               y1:{...gridOpt, position:'right', grid:{display:false}, suggestedMin:0, suggestedMax:12,
+                   title:{display:true,text:'sleep h',color:CSS('--sleep'),font:{size:9}},
+                   ticks:{color:CSS('--sleep'),font:{size:9}}} }}});
 }
 
 async function renderProjects(){

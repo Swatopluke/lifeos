@@ -650,10 +650,13 @@ async function loadAll(){
     options:{...baseOpts, plugins:{...baseOpts.plugins,
       legend:{display:true, labels:{boxWidth:9, boxHeight:9, padding:8, usePointStyle:true, pointStyle:'circle'}}},
       scales:{ x:{...gridOpt, grid:{display:false}, ticks:{maxTicksLimit:8}},
-               yN:{...gridOpt, position:'left', suggestedMin:0, suggestedMax:10,
+               yN:{...gridOpt, position:'left', suggestedMin:0,
+                   suggestedMax: Math.max(10, Math.ceil((Math.max(0,...liveNic,...refNic))*1.15/5)*5),
                    title:{display:true, text:'nicotine (mg)', color:CSS('--snus'), font:{size:9}},
                    ticks:{color:CSS('--snus'), font:{size:9}} },
-               yC:{...gridOpt, position:'right', suggestedMin:0, suggestedMax:120, grid:{display:false},
+               yC:{...gridOpt, position:'right', suggestedMin:0,
+                   suggestedMax: Math.max(120, Math.ceil((Math.max(0,...liveCaf,...refCaf))*1.15/20)*20),
+                   grid:{display:false},
                    title:{display:true, text:'caffeine (mg)', color:CSS('--caf'), font:{size:9}},
                    ticks:{color:CSS('--caf'), font:{size:9}} } }}});
 

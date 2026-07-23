@@ -150,6 +150,31 @@ input{font-family:inherit}
 .proj-link:hover{border-color:var(--energy)}
 
 .empty{text-align:center;color:var(--faint);font-size:12px;padding:26px 10px}
+/* projects detail */
+.proj-prd{margin-bottom:12px}
+.proj-prd-top{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.proj-prd-top b{font-family:'JetBrains Mono',monospace;font-weight:700}
+.proj-tasks{margin-bottom:12px}
+.ptask{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0}
+.ptask .mk{width:15px;height:15px;border-radius:5px;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.ptask.done{color:var(--dim)}
+.ptask.done .mk{background:var(--food);color:#04120F}
+.ptask.todo .mk{background:var(--surface);border:1.5px solid var(--border);color:transparent}
+.proj-act-top{display:flex;justify-content:space-between;font-size:11px;color:var(--faint);margin-bottom:6px}
+/* calendar */
+.cal{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.cal:last-child{border-bottom:none}
+.cal-date{text-align:center;flex-shrink:0;width:46px}
+.cal-d{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700}
+.cal-m{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}
+.cal-body{flex:1;min-width:0}
+.cal-title{font-size:13px;font-weight:600}
+.cal-meta{font-size:11px;color:var(--faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-count{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;
+  padding:4px 9px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);white-space:nowrap}
+.cal-count.soon{color:var(--energy);border-color:var(--energy)}
+
 .loading{text-align:center;color:var(--faint);font-size:12px;padding:40px}
 </style>
 </head>
@@ -236,6 +261,12 @@ input{font-family:inherit}
     <p class="csub">Coding projects · metrics &amp; tracking</p>
     <div id="projList"><div class="loading">Loading…</div></div>
   </div>
+
+  <div class="card">
+    <h2>Calendar</h2>
+    <p class="csub">Upcoming · next events</p>
+    <div id="calList"><div class="loading">Loading…</div></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -318,17 +349,23 @@ const SEED_PROJECTS = [
     key:'barsport',
     name:'BarSport',
     color:'#3B82F6',
-    stage:'Beta',
-    description:'Flutter/Dart social sports app — darts, tournaments, factions, leaderboards.',
+    stage:'Beta · Manual QA',
+    prdPct:80,
+    repo:'Swatopluke/barsport4',
     url:'https://github.com/Swatopluke/barsport4',
     link_label:'Repo',
-    metrics:[
-      { label:'LOC', value:'118k', sub:'~540 files' },
-      { label:'Phase', value:'Manual QA', sub:'pre-beta' },
-      { label:'Stack', value:'Riverpod', sub:'freezed · go_router' },
-      { label:'Backend', value:'Supabase', sub:'postgres' }
+    tasks:[
+      { t:'Core darts & match flow', done:true },
+      { t:'Deep-link web match flow', done:true },
+      { t:'Manual QA sweep (pre-beta)', done:false },
+      { t:'Offline mode full verify', done:false },
+      { t:'Elo / XP / badge DB triggers', done:false }
     ]
   }
+];
+
+const SEED_EVENTS = [
+  { title:'Sziget Festival', start:'2026-08-09', end:'2026-08-15', location:'Budapest, HU', note:'5-day pass · Island of Freedom' }
 ];
 
 /* ========= HELPERS ========= */
@@ -600,6 +637,7 @@ async function loadAll(){
   }).join('') || '<div class="empty">Log today to see progress</div>';
 
   renderProjects();
+  renderCalendar();
 }
 
 async function renderProjects(){
@@ -612,22 +650,83 @@ async function renderProjects(){
   if(!rows || !rows.length){ $('projList').innerHTML = '<div class="empty">No projects yet</div>'; return; }
 
   const card = p => {
-    const metrics = (p.metrics || []).map(m => `
-      <div class="proj-m"><div class="pm-lab">${m.label}</div>
-        <div class="pm-val" style="color:${p.color||'var(--text)'}">${m.value}</div>
-        ${m.sub?`<div class="pm-sub">${m.sub}</div>`:''}</div>`).join('');
+    const tasks = p.tasks || [];
+    const doneN = tasks.filter(t=>t.done).length;
+    const openN = tasks.length - doneN;
+    const prdPct = p.prdPct!=null ? p.prdPct : (tasks.length ? Math.round(doneN/tasks.length*100) : null);
+    const tiles = [
+      { label:'Commits', value:'…', sub:'last 14d', id:'pa-tot-'+p.key },
+      { label:'Streak', value:'…', sub:'active days', id:'pa-str-'+p.key },
+      { label:'Open tasks', value: tasks.length?String(openN):'—', sub:'to PRD' }
+    ];
+    const metrics = tiles.map(m=>`<div class="proj-m"><div class="pm-lab">${m.label}</div>
+      <div class="pm-val" id="${m.id||''}" style="color:${p.color||'var(--text)'}">${m.value}</div>
+      ${m.sub?`<div class="pm-sub">${m.sub}</div>`:''}</div>`).join('');
+    const tasksHtml = tasks.length ? `<div class="proj-tasks">${tasks.map(t=>`<div class="ptask ${t.done?'done':'todo'}"><span class="mk">✓</span>${t.t}</div>`).join('')}</div>` : '';
+    const prdHtml = prdPct!=null ? `<div class="proj-prd"><div class="proj-prd-top"><span>PRD progress</span><b>${prdPct}%</b></div>
+      <div class="bar"><i style="width:${prdPct}%;background:${prdPct>=85?CSS('--food'):prdPct>=60?CSS('--weight'):CSS('--booze')}"></i></div></div>` : '';
+    const actHtml = p.repo ? `<div class="proj-act"><div class="proj-act-top"><span>Commits / day · last 14d</span></div>
+      <div class="chartbox" style="height:64px"><canvas id="pa-${p.key}"></canvas></div></div>` : '';
     const link = p.url ? `<a class="proj-link" href="${p.url}" target="_blank" rel="noopener">↗ ${p.link_label||'Open'}</a>` : '';
     return `<div class="proj">
-      <div class="proj-head">
-        <div class="proj-name"><span class="proj-dot" style="background:${p.color||'var(--energy)'}"></span>${p.name}</div>
-        ${p.stage?`<span class="proj-stage">${p.stage}</span>`:''}
-      </div>
-      ${p.description?`<p class="proj-desc">${p.description}</p>`:''}
-      ${metrics?`<div class="proj-metrics">${metrics}</div>`:''}
-      ${link}
+      <div class="proj-head"><div class="proj-name"><span class="proj-dot" style="background:${p.color||'var(--energy)'}"></span>${p.name}</div>
+        ${p.stage?`<span class="proj-stage">${p.stage}</span>`:''}</div>
+      ${prdHtml}${tasksHtml}
+      <div class="proj-metrics">${metrics}</div>
+      ${actHtml}${link}
     </div>`;
   };
   $('projList').innerHTML = rows.map(card).join('');
+  rows.forEach(p=>{ if(p.repo) fetchProjectActivity(p.repo, p.key); });
+}
+
+async function fetchProjectActivity(repo, key){
+  const cv = $('pa-'+key); if(!cv) return;
+  try{
+    const r = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=100`, {headers:{'Accept':'application/vnd.github+json'}});
+    if(!r.ok) throw 0;
+    const arr = await r.json();
+    if(!Array.isArray(arr) || !arr.length) return;
+    const now = new Date(); now.setHours(0,0,0,0);
+    const days=[]; for(let i=13;i>=0;i--){ const d=new Date(now); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+    const c={}; days.forEach(d=>c[d]=0);
+    arr.forEach(it=>{ const a=it.commit&&it.commit.author&&it.commit.author.date; const cm=it.commit&&it.commit.committer&&it.commit.committer.date; const ds=(a||cm||'').slice(0,10); if(ds in c) c[ds]++; });
+    const data = days.map(d=>c[d]);
+    const total = arr.length>=100 ? '100+' : arr.length;
+    const streak = data.filter(v=>v>0).length;
+    const totEl=$('pa-tot-'+key); if(totEl) totEl.textContent=total;
+    const strEl=$('pa-str-'+key); if(strEl) strEl.textContent=streak;
+    drawChart('pa-'+key, { type:'bar', data:{ labels:days.map(d=>d.slice(8,10)), datasets:[{ data, backgroundColor:CSS('--energy')+'CC', borderRadius:3, barPercentage:.7 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ backgroundColor:CSS('--surface2'), borderColor:CSS('--border'), borderWidth:1, titleColor:CSS('--text'), bodyColor:CSS('--dim'), padding:9, displayColors:false } },
+        scales:{ x:{grid:{display:false}}, y:{...gridOpt, suggestedMin:0} } } });
+  } catch(e){ /* rate-limited or offline — leave placeholders */ }
+}
+
+async function renderCalendar(){
+  let rows = SEED_EVENTS;
+  try { const { data, error } = await sb.from('events').select('*').order('start'); if(!error && data && data.length) rows = data; } catch(e){}
+  if(!rows || !rows.length){ $('calList').innerHTML = '<div class="empty">No events</div>'; return; }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const items = rows.map(ev=>{
+    const s = new Date(ev.start+'T00:00:00');
+    const e = new Date((ev.end||ev.start)+'T00:00:00');
+    const diff = Math.round((s-today)/86400000);
+    let countTxt, soon=false;
+    if(diff>0){ countTxt='in '+diff+'d'; if(diff<=21) soon=true; }
+    else if(diff===0){ countTxt='today'; soon=true; }
+    else if(s<=today && e>=today){ countTxt='live'; soon=true; }
+    else { countTxt = Math.abs(diff)+'d ago'; }
+    const md = s.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const ed = e.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const range = md + (ev.end && ev.end!==ev.start ? ' – '+ed : '');
+    return `<div class="cal"><div class="cal-date"><div class="cal-d">${String(s.getDate()).padStart(2,'0')}</div>
+      <div class="cal-m">${s.toLocaleDateString('en-GB',{month:'short'})}</div></div>
+      <div class="cal-body"><div class="cal-title">${ev.title}</div>
+      <div class="cal-meta">${range}${ev.location?' · '+ev.location:''}${ev.note?' · '+ev.note:''}</div></div>
+      <div class="cal-count ${soon?'soon':''}">${countTxt}</div></div>`;
+  });
+  $('calList').innerHTML = items.join('');
 }
 </script>
 </body>

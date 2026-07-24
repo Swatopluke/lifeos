@@ -292,6 +292,12 @@ input{font-family:inherit}
   </div>
 
   <div class="card">
+    <h2>Sleep stages</h2>
+    <p class="csub">deep · rem · core · awake · last 14 days</p>
+    <div class="chartbox" style="height:200px"><canvas id="chStages"></canvas></div>
+  </div>
+
+  <div class="card">
     <h2>Steps</h2>
     <p class="csub" id="stepsSub">Loading…</p>
     <div class="seg" id="stepsRange">
@@ -395,6 +401,14 @@ input{font-family:inherit}
       <div class="frow"><label>Awakenings</label><input type="number" id="sl-wake" placeholder="2"></div>
       <div class="frow"><label>Sleep paralysis</label>
         <div class="seg" id="sl-sp"><button data-v="0" class="on">No</button><button data-v="1">Yes</button></div></div>
+      <details style="margin-top:4px"><summary style="font-size:11px;color:var(--faint);cursor:pointer;user-select:none">Stages · deep / rem / core / awake (hours)</summary>
+        <div class="grid2" style="gap:8px;margin-top:8px">
+          <div class="frow"><label>Deep</label><input type="number" step="0.25" id="sl-deep" placeholder="1.5"></div>
+          <div class="frow"><label>REM</label><input type="number" step="0.25" id="sl-rem" placeholder="1.5"></div>
+          <div class="frow"><label>Core</label><input type="number" step="0.25" id="sl-core" placeholder="3.0"></div>
+          <div class="frow"><label>Awake</label><input type="number" step="0.25" id="sl-awake" placeholder="0.5"></div>
+        </div>
+      </details>
       <div class="frow"><label>Notes</label><textarea id="sl-notes" placeholder="snoring, dry mouth, woke gasping…"></textarea></div>
     </div>
 
@@ -569,7 +583,8 @@ $('sheetSave').addEventListener('click', async ()=>{
     table='sleep';
     row={ night_of:$('sl-date').value||daysAgoISO(1), hours_asleep:num('sl-hours'),
           quality:num('sl-q'), awakenings:num('sl-wake'),
-          sleep_paralysis:!!spVal, notes:txt('sl-notes'), source:'dashboard' };
+          sleep_paralysis:!!spVal, deep_h:num('sl-deep'), rem_h:num('sl-rem'), core_h:num('sl-core'), awake_h:num('sl-awake'),
+          notes:txt('sl-notes'), source:'dashboard' };
   } else if(curTab==='meal'){
     table='meals';
     row={ description:$('ml-desc').value.trim()||'meal', meal_type:$('ml-type').value,
@@ -619,7 +634,7 @@ async function loadAll(){
   const sinceTs = since+'T00:00:00Z';
 
   const [sleepR, bodyR, stateR, intakeR, mealR, suppR, slogR, goalR, trainR] = await Promise.all([
-    sb.from('sleep').select('night_of,hours_asleep,quality,awakenings,sleep_paralysis').gte('night_of',since).order('night_of'),
+    sb.from('sleep').select('night_of,hours_asleep,quality,awakenings,sleep_paralysis,deep_h,rem_h,core_h,awake_h').gte('night_of',since).order('night_of'),
     sb.from('body_metrics').select('measured_on,weight_kg,neck_cm').gte('measured_on',daysAgoISO(59)).order('measured_on'),
     sb.from('daily_state').select('day,energy,mood,stress,steps').gte('day',since).order('day'),
     sb.from('intake').select('taken_at,kind,quantity,mg_nicotine,mg_caffeine,alcohol_units').gte('taken_at',sinceTs),
@@ -706,6 +721,20 @@ async function loadAll(){
       data:bodyRows.map(r=>r.weight_kg), borderColor:CSS('--weight'), backgroundColor:CSS('--weight')+'22',
       fill:true, tension:.32, pointRadius:3, pointBackgroundColor:CSS('--weight'), borderWidth:2 }]},
     options:{...baseOpts, scales:{...baseOpts.scales, y:{...gridOpt, suggestedMin:88}}}});
+
+  drawChart('chStages', {
+    type:'bar',
+    data:{ labels, datasets:[
+      { label:'Deep', data:days.map(d=>(sleepMap[d]?.deep_h)||0), backgroundColor:CSS('--sleep')+'CC', borderRadius:3, stack:'s', barPercentage:.7 },
+      { label:'REM', data:days.map(d=>(sleepMap[d]?.rem_h)||0), backgroundColor:CSS('--energy')+'CC', borderRadius:3, stack:'s', barPercentage:.7 },
+      { label:'Core', data:days.map(d=>(sleepMap[d]?.core_h)||0), backgroundColor:CSS('--dim')+'CC', borderRadius:3, stack:'s', barPercentage:.7 },
+      { label:'Awake', data:days.map(d=>(sleepMap[d]?.awake_h)||0), backgroundColor:CSS('--booze')+'CC', borderRadius:3, stack:'s', barPercentage:.7 }
+    ]},
+    options:{...baseOpts,
+      plugins:{...baseOpts.plugins, legend:{display:true, labels:{boxWidth:9,boxHeight:9,padding:11,usePointStyle:true,pointStyle:'circle'}}},
+      scales:{ x:{...gridOpt, grid:{display:false}, stacked:true },
+               y:{...gridOpt, stacked:true, position:'left', title:{display:true,text:'hours',color:CSS('--faint'),font:{size:9}}}}}
+  });
 
   drawChart('chIntake', { data:{ labels, datasets:[
       { type:'bar', label:'Snus', data:snus, backgroundColor:CSS('--snus')+'CC', borderRadius:3, stack:'a', barPercentage:.7 },

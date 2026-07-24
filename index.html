@@ -257,6 +257,8 @@ input{font-family:inherit}
   <div class="quick">
     <button class="qbtn" data-log="snus"><span class="q-ico">⬤</span><span class="q-cnt" id="cnt-snus">0</span><span class="q-lab">Snus</span></button>
     <button class="qbtn" data-log="coffee"><span class="q-ico">☕</span><span class="q-cnt" id="cnt-caf">0</span><span class="q-lab">Coffee</span></button>
+    <button class="qbtn" data-log="green_tea"><span class="q-ico">🍵</span><span class="q-cnt" id="cnt-greencaf">0</span><span class="q-lab">Green tea</span></button>
+    <button class="qbtn" data-log="matcha"><span class="q-ico">🍃</span><span class="q-cnt" id="cnt-matchacaf">0</span><span class="q-lab">Matcha</span></button>
     <button class="qbtn" data-log="alcohol"><span class="q-ico">🍺</span><span class="q-cnt" id="cnt-booze">0</span><span class="q-lab">Alcohol</span></button>
     <button class="qbtn" id="openSheet"><span class="q-ico">＋</span><span class="q-cnt">·</span><span class="q-lab">Log</span></button>
   </div>
@@ -518,9 +520,11 @@ function showApp(){
 
 /* ========= QUICK LOG ========= */
 const QUICK = {
-  snus:    { kind:'snus',     quantity:1, unit:'pouch', mg_nicotine:9 },
-  coffee:  { kind:'caffeine', quantity:1, unit:'cup', subtype:'coffee', mg_caffeine:95 },
-  alcohol: { kind:'alcohol',  quantity:1, unit:'unit', subtype:'beer', alcohol_units:1 }
+  snus:     { kind:'snus',      quantity:1, unit:'pouch', mg_nicotine:9 },
+  coffee:   { kind:'caffeine',  quantity:1, unit:'cup',   subtype:'coffee', mg_caffeine:95 },
+  green_tea:{ kind:'caffeine',  quantity:1, unit:'cup',   subtype:'green_tea', mg_caffeine:30 },
+  matcha:   { kind:'caffeine',  quantity:1, unit:'serve', subtype:'matcha', mg_caffeine:70 },
+  alcohol:  { kind:'alcohol',   quantity:1, unit:'unit',  subtype:'beer', alcohol_units:1 }
 };
 document.querySelectorAll('[data-log]').forEach(b=>{
   b.addEventListener('click', async ()=>{
@@ -644,15 +648,20 @@ async function loadAll(){
   const snus  = days.map(d => sumBy(d, r=> r.kind==='snus' ? (+r.quantity||0):0));
   const booze = days.map(d => sumBy(d, r=> r.kind==='alcohol' ? (+r.alcohol_units||0):0));
   const caf   = days.map(d => sumBy(d, r=> r.kind==='caffeine' ? (+r.mg_caffeine||0):0));
+  const cafCoffee = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='coffee' ? (+r.mg_caffeine||0):0));
+  const cafGreen  = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='green_tea' ? (+r.mg_caffeine||0):0));
+  const cafMatcha = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='matcha' ? (+r.mg_caffeine||0):0));
   const kcal  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.kcal||0),0));
   const prot  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.protein_g||0),0));
   const carbs = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.carbs_g||0),0));
   const fat   = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.fat_g||0),0));
 
   const today = todayISO();
-  $('cnt-snus').textContent  = snus[13]||0;
-  $('cnt-caf').textContent   = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine').length||0;
-  $('cnt-booze').textContent = booze[13]||0;
+  $('cnt-snus').textContent   = snus[13]||0;
+  $('cnt-caf').textContent    = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine' && r.subtype==='coffee').length||0;
+  $('cnt-greencaf').textContent = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine' && r.subtype==='green_tea').length||0;
+  $('cnt-matchacaf').textContent = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine' && r.subtype==='matcha').length||0;
+  $('cnt-booze').textContent  = booze[13]||0;
 
   /* ---- stat strip ---- */
   const validSleep = sleepH.filter(v=>v!=null);
@@ -669,7 +678,7 @@ async function loadAll(){
     ['Weight', latestW!=null ? latestW.toFixed(1) : '—',
       (latestW!=null&&firstW!=null&&latestW!==firstW) ? ((latestW-firstW>0?'+':'')+(latestW-firstW).toFixed(1)+' kg') : 'to 90kg', '--weight'],
     ['Caffeine', caf[13] ? Math.round(caf[13])+'mg' : '0mg',
-      lastCaf ? 'last '+String(lastCaf.getHours()).padStart(2,'0')+':'+String(lastCaf.getMinutes()).padStart(2,'0') : 'none today', '--caf'],
+      '☕'+(Math.round(cafCoffee[13]||0))+'mg · 🍵'+(Math.round(cafGreen[13]||0))+'mg · 🍃'+(Math.round(cafMatcha[13]||0))+'mg', '--caf'],
     ['Dry days', dryDays, 'streak', '--food'],
     ['Protein', prot[13] ? Math.round(prot[13])+'g' : '0g', 'of 170g', '--food'],
     ['Carbs', carbs[13] ? Math.round(carbs[13])+'g' : '0g', 'of 220g', '--weight'],
@@ -701,7 +710,10 @@ async function loadAll(){
   drawChart('chIntake', { data:{ labels, datasets:[
       { type:'bar', label:'Snus', data:snus, backgroundColor:CSS('--snus')+'CC', borderRadius:3, stack:'a', barPercentage:.7 },
       { type:'bar', label:'Alcohol', data:booze, backgroundColor:CSS('--booze')+'CC', borderRadius:3, stack:'a', barPercentage:.7 },
-      { type:'bar', label:'Caffeine/50', data:caf.map(v=>+(v/50).toFixed(1)), backgroundColor:CSS('--caf')+'CC', borderRadius:3, stack:'a', barPercentage:.7 },
+      { type:'bar', label:'☕ Coffee', data:cafCoffee, backgroundColor:'#9B5DE5CC', borderRadius:3, stack:'a', barPercentage:.7 },
+      { type:'bar', label:'🍵 Green tea', data:cafGreen, backgroundColor:CSS('--food')+'CC', borderRadius:3, stack:'a', barPercentage:.7 },
+      { type:'bar', label:'🍃 Matcha', data:cafMatcha, backgroundColor:'#C77DFFCC', borderRadius:3, stack:'a', barPercentage:.7 },
+      { type:'bar', label:'Caffeine/50', data:caf.map(v=>+(v/50).toFixed(1)), backgroundColor:'rgba(255,255,255,0.25)', borderRadius:3, stack:'a', barPercentage:.7 },
       { type:'line', label:'Sleep h', data:sleepH, borderColor:CSS('--sleep'), borderWidth:2,
         tension:.3, pointRadius:2, yAxisID:'y1', spanGaps:true }
     ]},

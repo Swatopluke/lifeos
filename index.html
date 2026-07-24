@@ -654,7 +654,7 @@ async function loadAll(){
     sb.from('sleep').select('night_of,hours_asleep,quality,awakenings,sleep_paralysis,deep_h,rem_h,core_h,awake_h').gte('night_of',since).order('night_of'),
     sb.from('body_metrics').select('measured_on,weight_kg,neck_cm').gte('measured_on',daysAgoISO(59)).order('measured_on'),
     sb.from('daily_state').select('day,energy,mood,stress,steps').gte('day',since).order('day'),
-    sb.from('intake').select('taken_at,kind,quantity,mg_nicotine,mg_caffeine,alcohol_units').gte('taken_at',sinceTs),
+    sb.from('intake').select('taken_at,kind,quantity,mg_nicotine,mg_caffeine,alcohol_units,subtype').gte('taken_at',sinceTs),
     sb.from('meals').select('eaten_at,kcal,protein_g,carbs_g,fat_g').gte('eaten_at',sinceTs),
     sb.from('supplements').select('*').order('name'),
     sb.from('supplement_log').select('supplement_id,taken_at').gte('taken_at',todayISO()+'T00:00:00Z'),

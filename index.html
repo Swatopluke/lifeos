@@ -185,6 +185,17 @@ input{font-family:inherit}
   padding:4px 9px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);white-space:nowrap}
 .cal-count.soon{color:var(--energy);border-color:var(--energy)}
 
+/* news */
+.news-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.news-item:last-child{border-bottom:none}
+.news-rank{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint);flex-shrink:0;width:16px;text-align:right;padding-top:1px}
+.news-body{flex:1;min-width:0}
+.news-title{font-size:13px;font-weight:600;color:var(--text);text-decoration:none;line-height:1.35}
+.news-title:hover{color:var(--energy)}
+.news-meta{font-size:11px;color:var(--faint);margin-top:3px}
+.news-meta a{color:var(--faint);text-decoration:none}
+.news-meta a:hover{color:var(--energy)}
+
 .loading{text-align:center;color:var(--faint);font-size:12px;padding:40px}
 
 /* briefing */
@@ -376,6 +387,12 @@ input{font-family:inherit}
     <h2>Calendar</h2>
     <p class="csub">Upcoming · next events</p>
     <div id="calList"><div class="loading">Loading…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Hacker News</h2>
+    <p class="csub">Top stories right now</p>
+    <div id="newsList"><div class="loading">Loading…</div></div>
   </div>
 </div>
 
@@ -913,6 +930,7 @@ async function loadAll(){
   renderProjects();
   renderCalendar();
   loadHistory();
+  renderNews();
 }
 
 /* ---- long-range sleep & steps history (unlocked by the Apple Health backfill) ---- */
@@ -1103,6 +1121,41 @@ async function renderCalendar(){
       <div class="cal-count ${soon?'soon':''}">${countTxt}</div></div>`;
   });
   $('calList').innerHTML = items.join('');
+}
+
+/* ---- Hacker News (public API, no key needed) ---- */
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+const timeAgo = unixSec => {
+  const s = Math.max(1, Math.floor(Date.now()/1000 - unixSec));
+  const units = [[31536000,'y'],[2592000,'mo'],[86400,'d'],[3600,'h'],[60,'m']];
+  for(const [sec,label] of units){ if(s>=sec) return Math.floor(s/sec)+label+' ago'; }
+  return s+'s ago';
+};
+const domainOf = url => { try{ return new URL(url).hostname.replace(/^www\./,''); } catch(e){ return null; } };
+
+async function renderNews(){
+  try{
+    const idsR = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+    if(!idsR.ok) throw new Error('topstories fetch failed');
+    const ids = (await idsR.json()).slice(0,8);
+    const items = await Promise.all(ids.map(id =>
+      fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r=>r.json())
+    ));
+    const rows = items.filter(Boolean).map((it,i)=>{
+      const link = it.url || `https://news.ycombinator.com/item?id=${it.id}`;
+      const dom = it.url ? domainOf(it.url) : null;
+      return `<div class="news-item"><div class="news-rank">${i+1}</div>
+        <div class="news-body">
+          <a class="news-title" href="${link}" target="_blank" rel="noopener">${escapeHtml(it.title||'(untitled)')}</a>
+          <div class="news-meta">${it.score??0} pts · <a href="https://news.ycombinator.com/item?id=${it.id}" target="_blank" rel="noopener">${it.descendants??0} comments</a>${dom?' · '+escapeHtml(dom):''} · ${timeAgo(it.time)}</div>
+        </div></div>`;
+    });
+    $('newsList').innerHTML = rows.join('') || '<div class="empty">No stories</div>';
+  } catch(e){
+    $('newsList').innerHTML = '<div class="empty">Couldn\'t load Hacker News</div>';
+  }
 }
 </script>
 </body>

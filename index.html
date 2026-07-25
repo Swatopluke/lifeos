@@ -327,7 +327,7 @@ input{font-family:inherit}
 
   <div class="card">
     <h2>Stimulant clearance</h2>
-    <p class="csub">Live decay from your logged snus &amp; coffee · nicotine t½ 2h · caffeine t½ 5h</p>
+    <p class="csub">Live decay · Budapest time · nicotine t½ 2h · caffeine t½ 5h · alcohol t½ 1.5h · line = now</p>
     <div class="chartbox" style="height:200px"><canvas id="chStim"></canvas></div>
   </div>
 
@@ -780,32 +780,77 @@ async function loadAll(){
 
   /* ---- stimulant clearance ---- */
   const now = Date.now();
-  const HN = 2.0, HC = 5.0;               // half-lives (h)
+  const HN = 2.0, HC = 5.0, HA = 1.5;     // half-lives (h): nicotine, caffeine, alcohol
   const decay = (mg0, t0, tHalf, h) => mg0 * Math.pow(0.5, (h - t0)/tHalf);
+  // Budapest (Europe/Budapest) formatters for the exact local clock time
+  const budaFmt = new Intl.DateTimeFormat('en-GB', { timeZone:'Europe/Budapest',
+    hour:'2-digit', minute:'2-digit', hour12:false });
+  const budaDay = new Intl.DateTimeFormat('en-CA', { timeZone:'Europe/Budapest',
+    year:'numeric', month:'2-digit', day:'2-digit' });
+  const todayBuda = budaDay.format(new Date(now));
   // build hourly x-axis from -6h .. +18h around now
   const stimH = [];
   for (let h = -6; h <= 18; h++) stimH.push(h);
-  const labStim = stimH.map(h => (h===0?'now':(h>0?'+'+h:''+h)+'h'));
-  // reference: a single 13mg snus (≈6.5mg nicotine) + 95mg caffeine at h=0
+  const nowIdx = stimH.indexOf(0);            // index of the 'now' tick
+  // bottom labels = exact Budapest clock hours for each instant (now + h hours)
+  const labStim = stimH.map(h => {
+    const t = new Date(now + h*3600000);
+    const hhmm = budaFmt.format(t);
+    const diff = Math.round((new Date(budaDay.format(t)+'T00:00:00').getTime()
+              - new Date(todayBuda+'T00:00:00').getTime())/86400000);
+    const tag = diff===0 ? '' : (diff>0 ? ' +'+diff+'d' : ' '+diff+'d');
+    return h===0 ? 'now '+hhmm : hhmm+tag;
+  });
+  // reference: 13mg snus (≈6.5mg nicotine) + 95mg caffeine + 2 alcohol units at h=0
   const refNic = stimH.map(h => h<0 ? 0 : 6.5 * Math.pow(0.5, h/HN));
   const refCaf = stimH.map(h => h<0 ? 0 : 95  * Math.pow(0.5, h/HC));
+  const refAlc = stimH.map(h => h<0 ? 0 : 2   * Math.pow(0.5, h/HA));
   // live: sum all logged doses projected onto this axis
-  const liveNic = stimH.map(()=>0), liveCaf = stimH.map(()=>0);
+  const liveNic = stimH.map(()=>0), liveCaf = stimH.map(()=>0), liveAlc = stimH.map(()=>0);
   (intakeR.data||[]).forEach(r=>{
     const t0 = (new Date(r.taken_at).getTime() - now)/3600000;  // hours relative to now
-    const mgN = r.kind==='snus'   ? (+r.mg_nicotine||0) : 0;
+    const mgN = r.kind==='snus'    ? (+r.mg_nicotine||0) : 0;
     const mgC = r.kind==='caffeine'? (+r.mg_caffeine||0) : 0;
-    stimH.forEach((h,i)=>{ if(h>=t0){ liveNic[i]+=decay(mgN,t0,HN,h); liveCaf[i]+=decay(mgC,t0,HC,h); } });
+    const uA  = r.kind==='alcohol' ? (+r.alcohol_units||0) : 0;
+    stimH.forEach((h,i)=>{ if(h>=t0){
+      liveNic[i]+=decay(mgN,t0,HN,h);
+      liveCaf[i]+=decay(mgC,t0,HC,h);
+      liveAlc[i]+=decay(uA ,t0,HA,h);
+    }});
   });
+  // inline plugin: vertical line marking the current state ('now')
+  const nowLine = {
+    id:'nowLine',
+    afterDatasetsDraw(chart){
+      const x = chart.scales.x.getPixelForValue(nowIdx);
+      const { top, bottom } = chart.chartArea;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.strokeStyle = CSS('--energy');
+      ctx.setLineDash([4,4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = CSS('--energy');
+      ctx.font = '600 9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('now', x, Math.max(top + 9, top - 4));
+      ctx.restore();
+    }
+  };
   drawChart('chStim', { data:{ labels:labStim, datasets:[
       { type:'line', label:'Your nicotine', data:liveNic, borderColor:CSS('--snus'), backgroundColor:CSS('--snus')+'22',
         fill:true, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'yN' },
       { type:'line', label:'Your caffeine', data:liveCaf, borderColor:CSS('--caf'), backgroundColor:CSS('--caf')+'22',
         fill:true, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'yC' },
+      { type:'line', label:'Your alcohol', data:liveAlc, borderColor:CSS('--booze'), backgroundColor:CSS('--booze')+'22',
+        fill:true, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'yA' },
       { type:'line', label:'Ref nicotine (13mg)', data:refNic, borderColor:CSS('--snus'), borderWidth:1.2,
         borderDash:[5,4], pointRadius:0, tension:.3, yAxisID:'yN' },
       { type:'line', label:'Ref caffeine (95mg)', data:refCaf, borderColor:CSS('--caf'), borderWidth:1.2,
-        borderDash:[5,4], pointRadius:0, tension:.3, yAxisID:'yC' }
+        borderDash:[5,4], pointRadius:0, tension:.3, yAxisID:'yC' },
+      { type:'line', label:'Ref alcohol (2u)', data:refAlc, borderColor:CSS('--booze'), borderWidth:1.2,
+        borderDash:[5,4], pointRadius:0, tension:.3, yAxisID:'yA' }
     ]},
     options:{...baseOpts, plugins:{...baseOpts.plugins,
       legend:{display:true, labels:{boxWidth:9, boxHeight:9, padding:8, usePointStyle:true, pointStyle:'circle'}}},
@@ -818,7 +863,11 @@ async function loadAll(){
                    suggestedMax: Math.max(120, Math.ceil((Math.max(0,...liveCaf,...refCaf))*1.15/20)*20),
                    grid:{display:false},
                    title:{display:true, text:'caffeine (mg)', color:CSS('--caf'), font:{size:9}},
-                   ticks:{color:CSS('--caf'), font:{size:9}} } }}});
+                   ticks:{color:CSS('--caf'), font:{size:9}} },
+               yA:{...gridOpt, position:'right', suggestedMin:0, display:false,
+                   suggestedMax: Math.max(4, Math.ceil(Math.max(0,...liveAlc,...refAlc)*1.15)) } }},
+    plugins:[nowLine]
+  });
 
   drawChart('chState', { type:'line', data:{ labels, datasets:[
       { label:'Energy', data:days.map(d=>stateMap[d]?.energy ?? null), borderColor:CSS('--energy'),

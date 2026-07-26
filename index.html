@@ -239,6 +239,38 @@ input{font-family:inherit}
   display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--faint);
   flex-direction:column;gap:1px}
 .tr-day.hit{background:var(--food);border-color:var(--food);color:#04120F;font-weight:700}
+
+/* group labels (visual redesign — section hierarchy) */
+.group{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);margin:22px 4px 8px;display:flex;align-items:center;gap:8px}
+.group::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* today / focus (forward engine) */
+.focus-intent{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  padding:11px 12px;border-radius:11px;font-size:14px;resize:vertical;min-height:42px;margin-bottom:10px}
+.focus-intent:focus{outline:none;border-color:var(--energy)}
+.focus-row{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--dim);margin-top:8px}
+.focus-row b{color:var(--text)}
+.focus-nudge{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:9px 11px;font-size:12px;color:var(--dim);line-height:1.45;margin-top:8px}
+.focus-nudge b{color:var(--energy)}
+
+/* habits (positive loop) */
+.habit{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+.habit:last-child{border-bottom:none}
+.habit-check{width:24px;height:24px;border-radius:7px;border:1.5px solid var(--border);
+  background:var(--surface2);flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:transparent}
+.habit-check.on{background:var(--food);border-color:var(--food);color:#04120F}
+.habit-name{font-size:13px;font-weight:600;flex:1}
+.habit-streak{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint)}
+.habit-streak b{color:var(--food)}
+
+/* journal */
+.jentry{padding:10px 0;border-bottom:1px solid var(--border);font-size:12.5px;line-height:1.5;color:var(--dim)}
+.jentry:last-child{border-bottom:none}
+.jentry .jd{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);margin-bottom:3px}
+.jentry b{color:var(--text)}
 </style>
 </head>
 <body>
@@ -283,6 +315,15 @@ input{font-family:inherit}
 
   <div class="stats" id="statStrip"></div>
 
+  <div class="card">
+    <h2>Today</h2>
+    <p class="csub">One intention · what would make today a win</p>
+    <textarea class="focus-intent" id="focusIntent" placeholder="e.g. Ship the manual QA sweep, then 30 min walk"></textarea>
+    <div class="focus-row"><span>🎯 Intention set · <b id="focusWhen">not yet</b></span></div>
+    <div class="focus-nudge" id="focusNudge">Set today's intention — your coach will nudge you toward it.</div>
+  </div>
+
+  <div class="group">Body &amp; mind</div>
   <div class="card">
     <h2>This week vs last</h2>
     <p class="csub">7-day totals / averages · green = moving the right way</p>
@@ -375,6 +416,22 @@ input{font-family:inherit}
       <p class="csub">Today against target</p>
       <div id="goalList"><div class="loading">Loading…</div></div>
     </div>
+  </div>
+
+  <div class="card">
+    <h2>Habits</h2>
+    <p class="csub">Positive loop · tap when done today</p>
+    <div id="habitList"><div class="loading">Loading…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Journal</h2>
+    <p class="csub">Reflections, decisions, what you learned</p>
+    <textarea class="focus-intent" id="journalInput" placeholder="What did you decide / learn / want to remember?"></textarea>
+    <div class="sheet-actions">
+      <button class="btn-go" id="journalSave" style="flex:1;padding:11px;border-radius:11px;font-size:14px;font-weight:700">Save entry</button>
+    </div>
+    <div id="journalList" style="margin-top:12px"><div class="loading">Loading…</div></div>
   </div>
 
   <div class="card">
@@ -980,6 +1037,9 @@ async function loadAll(){
   renderCalendar();
   loadHistory();
   renderNews();
+  renderFocus();
+  renderHabits();
+  renderJournal();
 }
 
 /* ---- long-range sleep & steps history (unlocked by the Apple Health backfill) ---- */
@@ -1205,6 +1265,84 @@ async function renderNews(){
   } catch(e){
     $('newsList').innerHTML = '<div class="empty">Couldn\'t load Hacker News</div>';
   }
+}
+
+/* ========= TODAY / FOCUS (forward engine) ========= */
+const FOCUS_KEY = 'lifeos_focus_';
+function renderFocus(){
+  try{
+    const key = FOCUS_KEY + todayISO();
+    const saved = JSON.parse(localStorage.getItem(key) || 'null');
+    const ta = $('focusIntent');
+    if(saved && saved.text){ ta.value = saved.text; $('focusWhen').textContent = saved.when; }
+    $('focusNudge').innerHTML = saved && saved.text
+      ? 'Keep <b>today\'s win</b> in view. Your coach checks in at 21:30.'
+      : 'Set today\'s intention — your coach will nudge you toward it.';
+    ta.oninput = () => {
+      if(!ta.value.trim()) return;
+      const when = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      localStorage.setItem(key, JSON.stringify({ text:ta.value.trim(), when }));
+      $('focusWhen').textContent = when;
+      $('focusNudge').innerHTML = 'Keep <b>today\'s win</b> in view. Your coach checks in at 21:30.';
+    };
+  }catch(e){}
+}
+
+/* ========= HABITS (positive loop) ========= */
+const SEED_HABITS = [
+  { key:'move',   name:'Move 30 min' },
+  { key:'read',   name:'Read 20 min' },
+  { key:'screen', name:'No screens last 30 min before bed' },
+  { key:'water',  name:'2 L water' }
+];
+const HABIT_DONE = 'lifeos_habit_';
+function renderHabits(){
+  try{
+    const day = todayISO();
+    const doneRaw = JSON.parse(localStorage.getItem(HABIT_DONE + day) || '{}');
+    const streakOf = k => { let n=0; const d=new Date();
+      for(let i=0;i<60;i++){ const ds=new Date(d); ds.setDate(d.getDate()-i);
+        const key=HABIT_DONE+ds.toISOString().slice(0,10);
+        const o=JSON.parse(localStorage.getItem(key)||'{}'); if(o[k]) n++; else break; }
+      return n; };
+    $('habitList').innerHTML = SEED_HABITS.map(h=>{
+      const on = !!doneRaw[h.key];
+      const st = streakOf(h.key);
+      return `<div class="habit" data-k="${h.key}">
+        <div class="habit-check ${on?'on':''}">✓</div>
+        <div class="habit-name">${h.name}</div>
+        <div class="habit-streak">${st>0?`<b>${st}</b>-day streak`:'start'}</div>
+      </div>`;
+    }).join('');
+    document.querySelectorAll('.habit').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const k=el.dataset.k, chk=el.querySelector('.habit-check');
+        const cur=JSON.parse(localStorage.getItem(HABIT_DONE+day)||'{}');
+        if(cur[k]){ delete cur[k]; chk.classList.remove('on'); }
+        else { cur[k]=true; chk.classList.add('on'); }
+        localStorage.setItem(HABIT_DONE+day, JSON.stringify(cur));
+        renderHabits();
+      });
+    });
+  }catch(e){ $('habitList').innerHTML='<div class="empty">—</div>'; }
+}
+
+/* ========= JOURNAL (reflection capture) ========= */
+const J_KEY = 'lifeos_journal';
+function renderJournal(){
+  try{
+    $('journalSave').addEventListener('click', ()=>{
+      const v = $('journalInput').value.trim(); if(!v) return;
+      const arr = JSON.parse(localStorage.getItem(J_KEY) || '[]');
+      arr.unshift({ day: todayISO(), text: v, ts: Date.now() });
+      localStorage.setItem(J_KEY, JSON.stringify(arr.slice(0,50)));
+      $('journalInput').value=''; renderJournal(); toast('Saved to journal');
+    });
+    const arr = JSON.parse(localStorage.getItem(J_KEY) || '[]');
+    $('journalList').innerHTML = arr.length
+      ? arr.map(j=>`<div class="jentry"><div class="jd">${j.day}</div>${escapeHtml(j.text)}</div>`).join('')
+      : '<div class="empty">No entries yet — capture a decision or lesson.</div>';
+  }catch(e){ $('journalList').innerHTML='<div class="empty">—</div>'; }
 }
 </script>
 </body>

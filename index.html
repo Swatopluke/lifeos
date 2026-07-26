@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0A0C0F">
+<meta name="theme-color" content="#08090D">
 <title>LifeOS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,7 +71,7 @@ input{font-family:inherit}
 /* cards */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:15px;
   padding:16px;margin-bottom:12px}
-.card h2{font-size:13px;font-weight:700;margin:0 0 2px;letter-spacing:.01em}
+.card h2{font-size:13px;font-weight:700;margin:0 0 2px;letter-spacing:.025em}
 .card .csub{font-size:11px;color:var(--faint);margin:0 0 14px}
 .chartbox{position:relative;height:180px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -281,7 +281,7 @@ body{
 }
 #app{ padding-top:14px; }
 .topbar h1{
-  background:linear-gradient(92deg,var(--text) 20%,var(--energy));
+  background:linear-gradient(92deg,var(--energy),var(--text) 85%);
   -webkit-background-clip:text; background-clip:text; color:transparent;
   font-size:22px;
 }
@@ -290,11 +290,13 @@ body{
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.025), 0 10px 26px rgba(0,0,0,0.28);
   border-color:var(--border);
 }
-.card h2{ letter-spacing:.01em; }
+.card h2{ letter-spacing:.025em; }
 .card.hero{
-  background:linear-gradient(135deg, rgba(45,212,191,0.12), var(--surface) 58%);
-  border-color:rgba(45,212,191,0.28);
-  box-shadow: inset 0 1px 0 rgba(45,212,191,0.12), 0 12px 30px rgba(0,0,0,0.3);
+  border:1px solid transparent;
+  background:
+    linear-gradient(135deg, rgba(45,212,191,0.12), var(--surface) 58%) padding-box,
+    linear-gradient(135deg, rgba(45,212,191,0.55), rgba(45,212,191,0.12) 45%, rgba(139,124,255,0.28)) border-box;
+  box-shadow: inset 0 1px 0 rgba(45,212,191,0.12), 0 12px 30px rgba(0,0,0,0.3), 0 0 34px rgba(45,212,191,0.07);
 }
 .card.hero h2{ color:var(--energy); }
 .stat{
@@ -303,7 +305,8 @@ body{
   transition:transform .12s, border-color .15s;
 }
 .stat .s-val{ letter-spacing:-0.01em; }
-.stat:hover{ border-color:var(--energy); transform:translateY(-1px); }
+.stat:hover{ border-color:rgba(45,212,191,0.45); transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(0,0,0,0.3), 0 0 18px rgba(45,212,191,0.06); }
 .qbtn{
   box-shadow:0 4px 14px rgba(0,0,0,0.18);
   transition:transform .1s, border-color .15s, background .15s;
@@ -312,7 +315,7 @@ body{
 .qbtn .q-cnt{ color:var(--text); }
 .btn-go{ box-shadow:0 6px 18px rgba(45,212,191,0.28); }
 .btn-primary{ box-shadow:0 6px 18px rgba(45,212,191,0.25); }
-.group{ color:var(--energy); letter-spacing:.14em; }
+.group{ color:var(--energy); letter-spacing:.16em; }
 .group::after{ background:linear-gradient(90deg,var(--border),transparent); }
 .proj-stage{ color:var(--energy); border-color:rgba(45,212,191,0.3); }
 .fab-refresh{ box-shadow:0 8px 24px rgba(45,212,191,0.4); }

@@ -14,10 +14,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{
-  --bg:#0A0C0F; --surface:#14171C; --surface2:#1A1E24; --border:#242932;
-  --text:#EDEFF2; --dim:#8B92A0; --faint:#4B5160;
-  --sleep:#6E8BFF; --food:#4FD69C; --snus:#FF8A3D; --booze:#FF5C7A;
-  --caf:#C77DFF; --weight:#F4D35E; --energy:#43E0C8;
+  --bg:#08090D; --surface:#101218; --surface2:#161A22; --border:#1F2530;
+  --text:#F0F2F7; --dim:#8A92A6; --faint:#565E70;
+  --sleep:#6E8BFF; --food:#46E0A8; --snus:#FF9F5C; --booze:#FF6B8A;
+  --caf:#B98CFF; --weight:#F4D35E; --energy:#2DD4BF; --accent2:#8B7CFF;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
@@ -271,6 +271,51 @@ input{font-family:inherit}
 .jentry:last-child{border-bottom:none}
 .jentry .jd{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);margin-bottom:3px}
 .jentry b{color:var(--text)}
+
+/* ===== redesign: elevation, hero, ambient glow ===== */
+body{
+  background:
+    radial-gradient(1100px 520px at 50% -12%, rgba(45,212,191,0.07), transparent 62%),
+    radial-gradient(900px 500px at 100% 0%, rgba(139,124,255,0.05), transparent 60%),
+    var(--bg);
+}
+#app{ padding-top:14px; }
+.topbar h1{
+  background:linear-gradient(92deg,var(--text) 20%,var(--energy));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  font-size:22px;
+}
+.topbar .today{ color:var(--faint); letter-spacing:.02em; }
+.card{
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.025), 0 10px 26px rgba(0,0,0,0.28);
+  border-color:var(--border);
+}
+.card h2{ letter-spacing:.01em; }
+.card.hero{
+  background:linear-gradient(135deg, rgba(45,212,191,0.12), var(--surface) 58%);
+  border-color:rgba(45,212,191,0.28);
+  box-shadow: inset 0 1px 0 rgba(45,212,191,0.12), 0 12px 30px rgba(0,0,0,0.3);
+}
+.card.hero h2{ color:var(--energy); }
+.stat{
+  box-shadow:0 4px 14px rgba(0,0,0,0.22);
+  border-color:var(--border);
+  transition:transform .12s, border-color .15s;
+}
+.stat .s-val{ letter-spacing:-0.01em; }
+.stat:hover{ border-color:var(--energy); transform:translateY(-1px); }
+.qbtn{
+  box-shadow:0 4px 14px rgba(0,0,0,0.18);
+  transition:transform .1s, border-color .15s, background .15s;
+}
+.qbtn:hover{ border-color:var(--energy); }
+.qbtn .q-cnt{ color:var(--text); }
+.btn-go{ box-shadow:0 6px 18px rgba(45,212,191,0.28); }
+.btn-primary{ box-shadow:0 6px 18px rgba(45,212,191,0.25); }
+.group{ color:var(--energy); letter-spacing:.14em; }
+.group::after{ background:linear-gradient(90deg,var(--border),transparent); }
+.proj-stage{ color:var(--energy); border-color:rgba(45,212,191,0.3); }
+.fab-refresh{ box-shadow:0 8px 24px rgba(45,212,191,0.4); }
 </style>
 </head>
 <body>
@@ -315,7 +360,7 @@ input{font-family:inherit}
 
   <div class="stats" id="statStrip"></div>
 
-  <div class="card">
+  <div class="card hero">
     <h2>Today</h2>
     <p class="csub">One intention · what would make today a win</p>
     <textarea class="focus-intent" id="focusIntent" placeholder="e.g. Ship the manual QA sweep, then 30 min walk"></textarea>
@@ -324,6 +369,7 @@ input{font-family:inherit}
   </div>
 
   <div class="group">Body &amp; mind</div>
+
   <div class="card">
     <h2>This week vs last</h2>
     <p class="csub">7-day totals / averages · green = moving the right way</p>
@@ -372,6 +418,8 @@ input{font-family:inherit}
     <div class="chartbox" style="height:200px"><canvas id="chStim"></canvas></div>
   </div>
 
+  <div class="group">Fuel &amp; state</div>
+
   <div class="grid2">
     <div class="card">
       <h2>Calories &amp; protein</h2>
@@ -384,6 +432,8 @@ input{font-family:inherit}
       <div class="chartbox"><canvas id="chState"></canvas></div>
     </div>
   </div>
+
+  <div class="group">Training</div>
 
   <div class="grid2">
     <div class="card">
@@ -399,11 +449,15 @@ input{font-family:inherit}
     </div>
   </div>
 
+  <div class="group">World</div>
+
   <div class="card">
     <h2>World</h2>
     <p class="csub" id="feedSub">Weather · dev · news — curated daily</p>
     <div id="feedList"><div class="loading">Loading…</div></div>
   </div>
+
+  <div class="group">Self &amp; systems</div>
 
   <div class="grid2">
     <div class="card">
@@ -433,6 +487,8 @@ input{font-family:inherit}
     </div>
     <div id="journalList" style="margin-top:12px"><div class="loading">Loading…</div></div>
   </div>
+
+  <div class="group">Work</div>
 
   <div class="card">
     <h2>Projects</h2>

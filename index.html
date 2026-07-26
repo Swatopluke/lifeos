@@ -1268,77 +1268,118 @@ async function renderNews(){
 }
 
 /* ========= TODAY / FOCUS (forward engine) ========= */
-const FOCUS_KEY = 'lifeos_focus_';
+/* ========= TODAY / FOCUS (forward engine, Supabase-synced) ========= */
 function renderFocus(){
   try{
-    const key = FOCUS_KEY + todayISO();
-    const saved = JSON.parse(localStorage.getItem(key) || 'null');
+    const day = todayISO();
     const ta = $('focusIntent');
-    if(saved && saved.text){ ta.value = saved.text; $('focusWhen').textContent = saved.when; }
-    $('focusNudge').innerHTML = saved && saved.text
-      ? 'Keep <b>today\'s win</b> in view. Your coach checks in at 21:30.'
-      : 'Set today\'s intention — your coach will nudge you toward it.';
+    const whenEl = $('focusWhen');
+    const nudge = $('focusNudge');
+    const load = saved => {
+      if(saved && saved.text){ ta.value = saved.text; whenEl.textContent = saved.when; }
+      nudge.innerHTML = saved && saved.text
+        ? 'Keep <b>today\'s win</b> in view. Your coach checks in at 21:30.'
+        : 'Set today\'s intention — your coach will nudge you toward it.';
+    };
+    // seed from localStorage first (instant, offline), then upgrade from Supabase
+    try{ load(JSON.parse(localStorage.getItem('lifeos_focus_'+day) || 'null')); }catch(e){}
+    sb.from('focus_intent').select('text,set_at').eq('day',day).maybeSingle()
+      .then(({data,error})=>{ if(!error && data){ const s={text:data.text, when:new Date(data.set_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}; localStorage.setItem('lifeos_focus_'+day, JSON.stringify(s)); load(s); } });
     ta.oninput = () => {
       if(!ta.value.trim()) return;
       const when = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-      localStorage.setItem(key, JSON.stringify({ text:ta.value.trim(), when }));
-      $('focusWhen').textContent = when;
-      $('focusNudge').innerHTML = 'Keep <b>today\'s win</b> in view. Your coach checks in at 21:30.';
+      const s = { text:ta.value.trim(), when };
+      localStorage.setItem('lifeos_focus_'+day, JSON.stringify(s));
+      whenEl.textContent = when;
+      nudge.innerHTML = 'Keep <b>today\'s win</b> in view. Your coach checks in at 21:30.';
+      sb.from('focus_intent').upsert({ day, text:ta.value.trim(), set_at:new Date().toISOString() });
     };
   }catch(e){}
 }
 
-/* ========= HABITS (positive loop) ========= */
+/* ========= HABITS (positive loop, Supabase-synced) ========= */
 const SEED_HABITS = [
   { key:'move',   name:'Move 30 min' },
   { key:'read',   name:'Read 20 min' },
   { key:'screen', name:'No screens last 30 min before bed' },
   { key:'water',  name:'2 L water' }
 ];
-const HABIT_DONE = 'lifeos_habit_';
+function habitStreak(rows){
+  // rows: [{day,key}] for this habit across 60 days, oldest->newest window
+  const set = new Set(rows.map(r=>r.day));
+  let n=0; const d=new Date();
+  for(let i=0;i<60;i++){ const ds=new Date(d); ds.setDate(d.getDate()-i);
+    if(set.has(ds.toISOString().slice(0,10))) n++; else break; }
+  return n;
+}
 function renderHabits(){
   try{
     const day = todayISO();
-    const doneRaw = JSON.parse(localStorage.getItem(HABIT_DONE + day) || '{}');
-    const streakOf = k => { let n=0; const d=new Date();
-      for(let i=0;i<60;i++){ const ds=new Date(d); ds.setDate(d.getDate()-i);
-        const key=HABIT_DONE+ds.toISOString().slice(0,10);
-        const o=JSON.parse(localStorage.getItem(key)||'{}'); if(o[k]) n++; else break; }
-      return n; };
-    $('habitList').innerHTML = SEED_HABITS.map(h=>{
-      const on = !!doneRaw[h.key];
-      const st = streakOf(h.key);
-      return `<div class="habit" data-k="${h.key}">
-        <div class="habit-check ${on?'on':''}">✓</div>
-        <div class="habit-name">${h.name}</div>
-        <div class="habit-streak">${st>0?`<b>${st}</b>-day streak`:'start'}</div>
-      </div>`;
-    }).join('');
-    document.querySelectorAll('.habit').forEach(el=>{
-      el.addEventListener('click', ()=>{
-        const k=el.dataset.k, chk=el.querySelector('.habit-check');
-        const cur=JSON.parse(localStorage.getItem(HABIT_DONE+day)||'{}');
-        if(cur[k]){ delete cur[k]; chk.classList.remove('on'); }
-        else { cur[k]=true; chk.classList.add('on'); }
-        localStorage.setItem(HABIT_DONE+day, JSON.stringify(cur));
-        renderHabits();
+    const draw = doneMap => {
+      $('habitList').innerHTML = SEED_HABITS.map(h=>{
+        const on = !!doneMap[h.key];
+        return `<div class="habit" data-k="${h.key}">
+          <div class="habit-check ${on?'on':''}">✓</div>
+          <div class="habit-name">${h.name}</div>
+          <div class="habit-streak" id="hst-${h.key}">…</div>
+        </div>`;
+      }).join('');
+      document.querySelectorAll('.habit').forEach(el=>{
+        el.addEventListener('click', ()=>{
+          const k=el.dataset.k, chk=el.querySelector('.habit-check');
+          const cur = JSON.parse(localStorage.getItem('lifeos_habit_'+day) || '{}');
+          if(cur[k]){ delete cur[k]; chk.classList.remove('on'); }
+          else { cur[k]=true; chk.classList.add('on'); }
+          localStorage.setItem('lifeos_habit_'+day, JSON.stringify(cur));
+          sb.from('habits').delete().eq('day',day).eq('key',k).then(()=>{
+            if(cur[k]) sb.from('habits').upsert({ day, key:k, done:true });
+            else $('hst-'+k).textContent='start';
+          });
+        });
+      });
+    };
+    // local seed
+    const localDone = JSON.parse(localStorage.getItem('lifeos_habit_'+day) || '{}');
+    draw(localDone);
+    // upgrade from Supabase + compute streaks
+    sb.from('habits').select('day,key').then(async ({data,error})=>{
+      if(error || !data) return;
+      // today's state
+      const todayMap = {};
+      data.filter(r=>r.day===day).forEach(r=>todayMap[r.key]=true);
+      draw(todayMap);
+      // streak per habit (60d window)
+      SEED_HABITS.forEach(h=>{
+        const rows = data.filter(r=>r.key===h.key).map(r=>({day:r.day}));
+        const st = habitStreak(rows);
+        const el = $('hst-'+h.key);
+        if(el) el.innerHTML = st>0?`<b>${st}</b>-day streak`:'start';
       });
     });
   }catch(e){ $('habitList').innerHTML='<div class="empty">—</div>'; }
 }
 
-/* ========= JOURNAL (reflection capture) ========= */
-const J_KEY = 'lifeos_journal';
+/* ========= JOURNAL (reflection capture, Supabase-synced) ========= */
 function renderJournal(){
   try{
     $('journalSave').addEventListener('click', ()=>{
       const v = $('journalInput').value.trim(); if(!v) return;
-      const arr = JSON.parse(localStorage.getItem(J_KEY) || '[]');
-      arr.unshift({ day: todayISO(), text: v, ts: Date.now() });
-      localStorage.setItem(J_KEY, JSON.stringify(arr.slice(0,50)));
+      const day = todayISO();
+      const local = JSON.parse(localStorage.getItem('lifeos_journal') || '[]');
+      local.unshift({ day, text:v, ts:Date.now() });
+      localStorage.setItem('lifeos_journal', JSON.stringify(local.slice(0,50)));
       $('journalInput').value=''; renderJournal(); toast('Saved to journal');
+      sb.from('journal').insert({ day, text:v }).then(({error})=>{ if(!error) loadJournal(); });
     });
-    const arr = JSON.parse(localStorage.getItem(J_KEY) || '[]');
+    loadJournal();
+  }catch(e){ $('journalList').innerHTML='<div class="empty">—</div>'; }
+}
+async function loadJournal(){
+  try{
+    const { data, error } = await sb.from('journal').select('day,text').order('created_at',{ascending:false}).limit(50);
+    let arr = [];
+    if(!error && data && data.length) arr = data;
+    else arr = JSON.parse(localStorage.getItem('lifeos_journal') || '[]');
     $('journalList').innerHTML = arr.length
       ? arr.map(j=>`<div class="jentry"><div class="jd">${j.day}</div>${escapeHtml(j.text)}</div>`).join('')
       : '<div class="empty">No entries yet — capture a decision or lesson.</div>';

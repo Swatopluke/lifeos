@@ -877,13 +877,13 @@ async function loadAll(){
   const liveNic = stimH.map(()=>0), liveCaf = stimH.map(()=>0), liveAlc = stimH.map(()=>0);
   (intakeR.data||[]).forEach(r=>{
     const t0 = (new Date(r.taken_at).getTime() - now)/3600000;  // hours relative to now
-    const mgN = r.kind==='snus'    ? (+r.mg_nicotine||0) : 0;
-    const mgC = r.kind==='caffeine'? (+r.mg_caffeine||0) : 0;
+    const mgN = r.kind==='snus' ? (+r.mg_nicotine||0) : 0;
+    const mgC = (r.kind==='caffeine' || r.kind==='coffee' || r.kind==='green_tea' || r.kind==='matcha') ? (+r.mg_caffeine||0) : 0;
     const uA  = r.kind==='alcohol' ? (+r.alcohol_units||0) : 0;
     stimH.forEach((h,i)=>{ if(h>=t0){
-      liveNic[i]+=decay(mgN,t0,HN,h);
-      liveCaf[i]+=decay(mgC,t0,HC,h);
-      liveAlc[i]+=decay(uA ,t0,HA,h);
+      if(mgN>0) liveNic[i]+=decay(mgN,t0,HN,h);
+      if(mgC>0) liveCaf[i]+=decay(mgC,t0,HC,h);
+      if(uA>0)  liveAlc[i]+=decay(uA,t0,HA,h);
     }});
   });
   // inline plugin: vertical line marking the current state ('now')
@@ -907,20 +907,22 @@ async function loadAll(){
     }
   };
   drawChart('chStim', { data:{ labels:labStim, datasets:[
-      { type:'line', label:'Your nicotine', data:liveNic, borderColor:CSS('--snus'), backgroundColor:CSS('--snus')+'22',
-        fill:true, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'yN' },
-      { type:'line', label:'Your caffeine', data:liveCaf, borderColor:CSS('--caf'), backgroundColor:CSS('--caf')+'22',
-        fill:true, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'yC' },
-      { type:'line', label:'Your alcohol', data:liveAlc, borderColor:CSS('--booze'), backgroundColor:CSS('--booze')+'22',
-        fill:true, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'yA' },
-      { type:'line', label:'Ref nicotine (13mg)', data:refNic, borderColor:CSS('--snus'), borderWidth:1.2,
+      { type:'line', label:'Your nicotine (total)', data:liveNic, borderColor:CSS('--snus'), backgroundColor:CSS('--snus')+'22',
+        fill:true, tension:.3, pointRadius:0, borderWidth:2.5, yAxisID:'yN' },
+      { type:'line', label:'Your caffeine (total)', data:liveCaf, borderColor:CSS('--caf'), backgroundColor:CSS('--caf')+'22',
+        fill:true, tension:.3, pointRadius:0, borderWidth:2.5, yAxisID:'yC' },
+      { type:'line', label:'Your alcohol (total)', data:liveAlc, borderColor:CSS('--booze'), backgroundColor:CSS('--booze')+'22',
+        fill:true, tension:.3, pointRadius:0, borderWidth:2.5, yAxisID:'yA' },
+      { type:'line', label:'Ref nicotine (13mg single)', data:refNic, borderColor:CSS('--snus'), borderWidth:1,
         borderDash:[5,4], pointRadius:0, tension:.3, yAxisID:'yN' },
-      { type:'line', label:'Ref caffeine (95mg)', data:refCaf, borderColor:CSS('--caf'), borderWidth:1.2,
+      { type:'line', label:'Ref caffeine (95mg single)', data:refCaf, borderColor:CSS('--caf'), borderWidth:1,
         borderDash:[5,4], pointRadius:0, tension:.3, yAxisID:'yC' },
-      { type:'line', label:'Ref alcohol (2u)', data:refAlc, borderColor:CSS('--booze'), borderWidth:1.2,
+      { type:'line', label:'Ref alcohol (2u single)', data:refAlc, borderColor:CSS('--booze'), borderWidth:1,
         borderDash:[5,4], pointRadius:0, tension:.3, yAxisID:'yA' }
     ]},
     options:{...baseOpts, plugins:{...baseOpts.plugins,
+      tooltip:{ callbacks:{
+        afterLabel(ctx){ if(ctx.datasetIndex<3){ const val=ctx.parsed.y; return val>0.1?Math.round(val*10)/10+' mg':''; }}}},
       legend:{display:true, labels:{boxWidth:9, boxHeight:9, padding:8, usePointStyle:true, pointStyle:'circle'}}},
       scales:{ x:{...gridOpt, grid:{display:false}, ticks:{maxTicksLimit:8}},
                yN:{...gridOpt, position:'left', suggestedMin:0,

@@ -1052,18 +1052,21 @@ async function loadAll(){
 
 /* ---- long-range sleep & steps history (unlocked by the Apple Health backfill) ---- */
 async function loadHistory(){
-  const since = stepsRange===1 ? todayISO()+'T00:00:00Z' : stepsRange===7 ? daysAgoISO(6) : daysAgoISO(29);
+  // 24H reads real hourly buckets from health_metrics; 7D/30D use daily totals.
+  const since = daysAgoISO(stepsRange===30 ? 29 : 6);
 
-  // Primary source: current tables (daily_state.steps, sleep.hours_asleep)
-  const [sR, stR, hrR] = await Promise.all([
-    sb.from('sleep').select('night_of,hours_asleep').gte('night_of',since.slice(0,10)).order('night_of').limit(5000),
-    sb.from('daily_state').select('day,steps').gte('day',since.slice(0,10)).order('day').limit(5000),
-    sb.from('health_raw').select('payload').gte('payload->>date',since.slice(0,10)).order('payload->>date').limit(5000)
-  ]);
+  const qs = [
+    sb.from('sleep').select('night_of,hours_asleep').gte('night_of',since).order('night_of').limit(5000),
+    sb.from('daily_state').select('day,steps').gte('day',since).order('day').limit(5000),
+    sb.from('health_raw').select('payload').gte('payload->>date',since).order('payload->>date').limit(5000)
+  ];
+  if(stepsRange===1) qs.push(
+    sb.from('health_metrics').select('measured_at,qty').eq('metric','steps_hourly')
+      .gte('measured_at', since+'T00:00:00Z').order('measured_at').limit(5000)
+  );
+  const [sR, stR, hrR, hmR] = await Promise.all(qs);
 
   if(sR.error || stR.error){ $('stepsSub').textContent='Load error'; return; }
-
-  const todayD = stepsRange===1 ? todayISO() : null;
 
   // Build unified steps map by day
   const stepMap={}, sleepMap2={};
@@ -1071,16 +1074,20 @@ async function loadHistory(){
   (stR.data||[]).forEach(r=>{ if(r.steps!=null) stepMap[r.day]=+r.steps; });
   (hrR?.data||[]).forEach(r=>{ const d=r.payload?.date; if(d && r.payload?.steps) stepMap[d]=+(r.payload.steps); });
 
-  // Labels: for 24H emit hourly (assume all from today), else shortDay
-  let labels=[], stepsVals=[];
+  let labels=[], stepsVals=[], hourlyDate=null;
   if(stepsRange===1){
-    const base=new Date(); base.setHours(0,0,0,0);
-    for(let h=0;h<24;h++){
-      const stamp = new Date(base.getTime()+h*3600000);
-      const iso = stamp.toISOString().slice(0,10);
-      labels.push(String(h).padStart(2,'0')+':00');
-      const v = stepMap[iso]; stepsVals.push(v!=null?Math.round(v):null);
-    }
+    // Bucket by LOCAL calendar day, then show the most recent day that has data.
+    const pad = n => String(n).padStart(2,'0');
+    const byDate = {};
+    (hmR?.data||[]).forEach(r=>{
+      const dt = new Date(r.measured_at);
+      const d = dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());
+      (byDate[d] = byDate[d] || Array(24).fill(null))[dt.getHours()] = Math.round(+r.qty);
+    });
+    const dates = Object.keys(byDate).sort();
+    hourlyDate = dates.length ? dates[dates.length-1] : null;
+    labels = Array.from({length:24}, (_,h)=> pad(h)+':00');
+    stepsVals = hourlyDate ? byDate[hourlyDate] : Array(24).fill(null);
   } else {
     const n=stepsRange; const ls=[];
     for(let i=n-1;i>=0;i--) ls.push(daysAgoISO(i));
@@ -1091,14 +1098,24 @@ async function loadHistory(){
   const validSteps = stepsVals.filter(v=>v!=null);
   const avg = validSteps.length?Math.round(validSteps.reduce((a,b)=>a+b,0)/validSteps.length):null;
 
-  $('stepsSub').textContent = 'Avg: '+avg?.toLocaleString()+' steps · '+stepsRange+(stepsRange===1?'H':'d')+' window';
+  if(stepsRange===1){
+    const tot = validSteps.reduce((a,b)=>a+b,0);
+    $('stepsSub').textContent = hourlyDate
+      ? tot.toLocaleString()+' steps · hourly · '+(hourlyDate===todayISO()?'today':hourlyDate)
+      : 'No hourly data yet';
+  } else {
+    $('stepsSub').textContent = 'Avg: '+(avg!=null?avg.toLocaleString():'—')+' steps · '+stepsRange+'d window';
+  }
 
   drawChart('chSteps', {
     type:'bar',
     data:{ labels, datasets:[{
       data:stepsVals,
       backgroundColor: validSteps.length? (
+        // per-hour counts are far smaller than daily totals, so the
+        // 5k/10k day thresholds only apply to the multi-day views
         stepsVals.map(v=> v==null? CSS('--border')+'88' :
+          stepsRange===1 ? CSS('--energy')+'CC' :
           v<5000? CSS('--booze')+'CC' :
           v>10000? CSS('--food')+'CC' : CSS('--energy')+'CC')
       ) : CSS('--border')+'88',

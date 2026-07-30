@@ -314,7 +314,7 @@ details.more>summary .sum-sub{font-size:11px;font-weight:400;color:var(--faint);
     <button class="qbtn" data-log="coffee"><span class="q-ico">☕</span><span class="q-cnt" id="cnt-caf">0</span><span class="q-lab">Coffee</span></button>
     <button class="qbtn" data-log="green_tea"><span class="q-ico">🍵</span><span class="q-cnt" id="cnt-greencaf">0</span><span class="q-lab">Green tea</span></button>
     <button class="qbtn" data-log="matcha"><span class="q-ico">🍃</span><span class="q-cnt" id="cnt-matchacaf">0</span><span class="q-lab">Matcha</span></button>
-    <button class="qbtn" data-log="alcohol"><span class="q-ico">🍺</span><span class="q-cnt" id="cnt-booze">0</span><span class="q-lab">Alcohol</span></button>
+    <button class="qbtn" data-log="alcohol"><span class="q-ico">🍺</span><span class="q-cnt" id="cnt-booze">0</span><span class="q-lab">Dreher</span></button>
     <button class="qbtn" id="openSheet"><span class="q-ico">＋</span><span class="q-cnt">·</span><span class="q-lab">Log</span></button>
   </div>
 
@@ -623,14 +623,16 @@ const QUICK = {
   coffee:   { kind:'caffeine',  quantity:1, unit:'cup',   subtype:'coffee', mg_caffeine:95 },
   green_tea:{ kind:'caffeine',  quantity:1, unit:'cup',   subtype:'green_tea', mg_caffeine:30 },
   matcha:   { kind:'caffeine',  quantity:1, unit:'serve', subtype:'matcha', mg_caffeine:70 },
-  alcohol:  { kind:'alcohol',   quantity:1, unit:'unit',  subtype:'beer', alcohol_units:1 }
+  // Dreher Gold (Hungarian lager): 5 dl @ 5% ABV -> ~1.97 alcohol units (Hungarian std = 10g/unit)
+  alcohol:  { kind:'alcohol',   quantity:1, unit:'can',   subtype:'dreher_gold',
+              alcohol_units: +(500/1000 * 5 * 7.89 / 10).toFixed(2) }
 };
 document.querySelectorAll('[data-log]').forEach(b=>{
   b.addEventListener('click', async ()=>{
     const row = { ...QUICK[b.dataset.log], taken_at:new Date().toISOString(), source:'dashboard' };
     const { error } = await sb.from('intake').insert(row);
     if(error) return toast('Failed: '+error.message, true);
-    toast(b.dataset.log+' logged');
+    toast(b.dataset.log==='alcohol' ? 'Dreher Gold logged 🍺' : b.dataset.log+' logged');
     loadAll();
   });
 });
@@ -751,7 +753,16 @@ async function loadAll(){
   const cafCoffee = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='coffee' ? (+r.mg_caffeine||0):0));
   const cafGreen  = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='green_tea' ? (+r.mg_caffeine||0):0));
   const cafMatcha = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='matcha' ? (+r.mg_caffeine||0):0));
-  const kcal  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.kcal||0),0));
+  // One Dreher Gold (5 dl, 5% ABV) carries its own real calories (~198 kcal incl. residual carbs)
+  const DREHER_KCAL = 198;
+  const KCAL_PER_ALC_UNIT = 70;   // fallback calories/unit for other/legacy alcohol rows not tied to a known drink
+  const boozeKcal = days.map(d => sumBy(d, r=>{
+    if (r.kind!=='alcohol') return 0;
+    if (r.subtype==='dreher_gold') return DREHER_KCAL;
+    return (+r.alcohol_units||0) * KCAL_PER_ALC_UNIT;
+  }));
+  const mealKcal  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.kcal||0),0));
+  const kcal  = days.map((d,i)=> mealKcal[i] + boozeKcal[i]);   // meals + alcohol calories
   const prot  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.protein_g||0),0));
   const carbs = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.carbs_g||0),0));
   const fat   = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.fat_g||0),0));
@@ -995,6 +1006,10 @@ async function loadAll(){
     const prevW = wk.slice(14,21);
     const iSum = (ds,f)=>ds.reduce((a,d)=>a+(intakeMap[d]||[]).reduce((x,r)=>x+f(r),0),0);
     const mSum = (ds,f)=>ds.reduce((a,d)=>a+(mealMap[d]||[]).reduce((x,r)=>x+(+f(r)||0),0),0);
+    const aSum = (ds)=>ds.reduce((a,d)=>a+(intakeMap[d]||[]).reduce((x,r)=>{
+      if (r.kind!=='alcohol') return x;
+      return x + (r.subtype==='dreher_gold' ? DREHER_KCAL : (+r.alcohol_units||0)*KCAL_PER_ALC_UNIT);
+    },0),0);
     const sAvg = ds=>{ const v=ds.map(d=>sleepMap[d]?.hours_asleep).filter(x=>x!=null); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; };
     const stSum = ds=>ds.reduce((a,d)=>a+(+ (stateMap[d]?.steps)||0),0);
     const rows = [
@@ -1002,7 +1017,7 @@ async function loadAll(){
       ['Snus', iSum(thisW,r=>r.kind==='snus'?(+r.quantity||0):0), iSum(prevW,r=>r.kind==='snus'?(+r.quantity||0):0), '', true],
       ['Alcohol', iSum(thisW,r=>r.kind==='alcohol'?(+r.alcohol_units||0):0), iSum(prevW,r=>r.kind==='alcohol'?(+r.alcohol_units||0):0), 'u', true],
       ['Caffeine', iSum(thisW,r=>r.kind==='caffeine'?(+r.mg_caffeine||0):0), iSum(prevW,r=>r.kind==='caffeine'?(+r.mg_caffeine||0):0), 'mg', true],
-      ['Kcal/day', mSum(thisW,r=>r.kcal)/7, mSum(prevW,r=>r.kcal)/7, '', true],
+      ['Kcal/day', (mSum(thisW,r=>r.kcal)+aSum(thisW))/7, (mSum(prevW,r=>r.kcal)+aSum(prevW))/7, '', true],
       ['Steps', stSum(thisW), stSum(prevW), '', false]
     ];
     $('wkDeltas').innerHTML = rows.map(([lab,cur,prev,unit,lowerBetter])=>{

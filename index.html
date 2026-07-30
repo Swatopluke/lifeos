@@ -752,7 +752,10 @@ async function loadAll(){
   if(err){ toast('Load error: '+err.error.message, true); return; }
 
   const days=[]; for(let i=13;i>=0;i--) days.push(daysAgoISO(i));
-  const byDay = (rows, key) => { const m={}; rows.forEach(r=>{ const d=(r[key]||'').slice(0,10); (m[d]=m[d]||[]).push(r); }); return m; };
+  // Bucket by the BUDAPEST date of each timestamp (machine TZ is CEST, so days[] are Budapest days).
+  // Without this, UTC timestamps near midnight get bucketed to the wrong day and "today" reads 0.
+  const budDay = ts => (ts ? budaDay.format(new Date(ts)) : '');
+  const byDay = (rows, key) => { const m={}; rows.forEach(r=>{ const d=budDay(r[key]); if(d) (m[d]=m[d]||[]).push(r); }); return m; };
 
   const sleepMap  = Object.fromEntries((sleepR.data||[]).map(r=>[r.night_of,r]));
   const stateMap  = Object.fromEntries((stateR.data||[]).map(r=>[r.day,r]));
@@ -1041,7 +1044,7 @@ async function loadAll(){
   /* ---- training ---- */
   (function(){
     const rows = (trainR && !trainR.error && trainR.data) ? trainR.data : [];
-    const dayOf = r => ((r.trained_at||r.created_at)||'').slice(0,10);
+    const dayOf = r => budDay((r.trained_at||r.created_at));
     const wk7=[]; for(let i=6;i>=0;i--) wk7.push(daysAgoISO(i));
     const last14 = days;                                  // existing 14d asc array
     const byD={}; rows.forEach(r=>{ const d=dayOf(r); (byD[d]=byD[d]||[]).push(r); });

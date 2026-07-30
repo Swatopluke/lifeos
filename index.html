@@ -622,17 +622,30 @@ const QUICK = {
   snus:     { kind:'snus',      quantity:1, unit:'pouch', mg_nicotine:9 },
   coffee:   { kind:'caffeine',  quantity:1, unit:'cup',   subtype:'coffee', mg_caffeine:95 },
   green_tea:{ kind:'caffeine',  quantity:1, unit:'cup',   subtype:'green_tea', mg_caffeine:30 },
-  matcha:   { kind:'caffeine',  quantity:1, unit:'serve', subtype:'matcha', mg_caffeine:70 },
-  // Dreher Gold (Hungarian lager): 5 dl @ 5% ABV -> ~1.97 alcohol units (Hungarian std = 10g/unit)
-  alcohol:  { kind:'alcohol',   quantity:1, unit:'can',   subtype:'dreher_gold',
-              alcohol_units: +(500/1000 * 5 * 7.89 / 10).toFixed(2) }
+  matcha:   { kind:'caffeine',  quantity:1, unit:'serve', subtype:'matcha', mg_caffeine:70 }
 };
+// Dreher Gold (Hungarian lager): 5 dl @ 5% ABV. Alcohol is logged as FOOD (a meal) so its
+// calories count toward intake; it no longer feeds the stimulant-clearance chart.
+const DREHER = { kcal:198, carbs_g:11, protein_g:0, fat_g:0, units:+(500/1000*5*7.89/10).toFixed(2) };
 document.querySelectorAll('[data-log]').forEach(b=>{
   b.addEventListener('click', async ()=>{
+    if(b.dataset.log==='alcohol'){
+      // Log Dreher Gold as a MEAL so its calories count toward food intake
+      const row = {
+        description:'Dreher Gold 5dl 5%', meal_type:'snack',
+        kcal:DREHER.kcal, protein_g:DREHER.protein_g, carbs_g:DREHER.carbs_g, fat_g:DREHER.fat_g,
+        estimated:true, confidence:'medium', eaten_at:new Date().toISOString(), source:'dashboard'
+      };
+      const { error } = await sb.from('meals').insert(row);
+      if(error) return toast('Failed: '+error.message, true);
+      toast('Dreher Gold logged 🍺 ('+DREHER.kcal+' kcal)');
+      loadAll();
+      return;
+    }
     const row = { ...QUICK[b.dataset.log], taken_at:new Date().toISOString(), source:'dashboard' };
     const { error } = await sb.from('intake').insert(row);
     if(error) return toast('Failed: '+error.message, true);
-    toast(b.dataset.log==='alcohol' ? 'Dreher Gold logged 🍺' : b.dataset.log+' logged');
+    toast(b.dataset.log+' logged');
     loadAll();
   });
 });
@@ -748,21 +761,13 @@ async function loadAll(){
 
   const sumBy = (d,f) => (intakeMap[d]||[]).reduce((a,r)=>a+f(r),0);
   const snus  = days.map(d => sumBy(d, r=> r.kind==='snus' ? (+r.quantity||0):0));
-  const booze = days.map(d => sumBy(d, r=> r.kind==='alcohol' ? (+r.alcohol_units||0):0));
+  const alcMeals = days.map(d => (mealMap[d]||[]).filter(r=> (r.description||'').includes('Dreher')).length);
+  const booze = days.map((d,i)=> alcMeals[i]*DREHER.units);   // alcohol units, now derived from Dreher meal logs
   const caf   = days.map(d => sumBy(d, r=> r.kind==='caffeine' ? (+r.mg_caffeine||0):0));
   const cafCoffee = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='coffee' ? (+r.mg_caffeine||0):0));
   const cafGreen  = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='green_tea' ? (+r.mg_caffeine||0):0));
   const cafMatcha = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='matcha' ? (+r.mg_caffeine||0):0));
-  // One Dreher Gold (5 dl, 5% ABV) carries its own real calories (~198 kcal incl. residual carbs)
-  const DREHER_KCAL = 198;
-  const KCAL_PER_ALC_UNIT = 70;   // fallback calories/unit for other/legacy alcohol rows not tied to a known drink
-  const boozeKcal = days.map(d => sumBy(d, r=>{
-    if (r.kind!=='alcohol') return 0;
-    if (r.subtype==='dreher_gold') return DREHER_KCAL;
-    return (+r.alcohol_units||0) * KCAL_PER_ALC_UNIT;
-  }));
-  const mealKcal  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.kcal||0),0));
-  const kcal  = days.map((d,i)=> mealKcal[i] + boozeKcal[i]);   // meals + alcohol calories
+  const kcal  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.kcal||0),0));
   const prot  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.protein_g||0),0));
   const carbs = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.carbs_g||0),0));
   const fat   = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.fat_g||0),0));
@@ -772,7 +777,7 @@ async function loadAll(){
   $('cnt-caf').textContent    = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine' && r.subtype==='coffee').length||0;
   $('cnt-greencaf').textContent = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine' && r.subtype==='green_tea').length||0;
   $('cnt-matchacaf').textContent = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine' && r.subtype==='matcha').length||0;
-  $('cnt-booze').textContent  = booze[13]||0;
+  $('cnt-booze').textContent  = alcMeals[13]||0;
 
   /* ---- stat strip ---- */
   const validSleep = sleepH.filter(v=>v!=null);
@@ -1006,18 +1011,15 @@ async function loadAll(){
     const prevW = wk.slice(14,21);
     const iSum = (ds,f)=>ds.reduce((a,d)=>a+(intakeMap[d]||[]).reduce((x,r)=>x+f(r),0),0);
     const mSum = (ds,f)=>ds.reduce((a,d)=>a+(mealMap[d]||[]).reduce((x,r)=>x+(+f(r)||0),0),0);
-    const aSum = (ds)=>ds.reduce((a,d)=>a+(intakeMap[d]||[]).reduce((x,r)=>{
-      if (r.kind!=='alcohol') return x;
-      return x + (r.subtype==='dreher_gold' ? DREHER_KCAL : (+r.alcohol_units||0)*KCAL_PER_ALC_UNIT);
-    },0),0);
+    const aUnits = (ds)=>ds.reduce((a,d)=>a+alcMeals[days.indexOf(d)]*DREHER.units, 0);
     const sAvg = ds=>{ const v=ds.map(d=>sleepMap[d]?.hours_asleep).filter(x=>x!=null); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; };
     const stSum = ds=>ds.reduce((a,d)=>a+(+ (stateMap[d]?.steps)||0),0);
     const rows = [
       ['Sleep avg', sAvg(thisW), sAvg(prevW), 'h', false],
       ['Snus', iSum(thisW,r=>r.kind==='snus'?(+r.quantity||0):0), iSum(prevW,r=>r.kind==='snus'?(+r.quantity||0):0), '', true],
-      ['Alcohol', iSum(thisW,r=>r.kind==='alcohol'?(+r.alcohol_units||0):0), iSum(prevW,r=>r.kind==='alcohol'?(+r.alcohol_units||0):0), 'u', true],
+      ['Alcohol', aUnits(thisW), aUnits(prevW), 'u', true],
       ['Caffeine', iSum(thisW,r=>r.kind==='caffeine'?(+r.mg_caffeine||0):0), iSum(prevW,r=>r.kind==='caffeine'?(+r.mg_caffeine||0):0), 'mg', true],
-      ['Kcal/day', (mSum(thisW,r=>r.kcal)+aSum(thisW))/7, (mSum(prevW,r=>r.kcal)+aSum(prevW))/7, '', true],
+      ['Kcal/day', mSum(thisW,r=>r.kcal)/7, mSum(prevW,r=>r.kcal)/7, '', true],
       ['Steps', stSum(thisW), stSum(prevW), '', false]
     ];
     $('wkDeltas').innerHTML = rows.map(([lab,cur,prev,unit,lowerBetter])=>{

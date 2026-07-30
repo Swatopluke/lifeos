@@ -221,6 +221,9 @@ details.more>summary .sum-sub{font-size:11px;font-weight:400;color:var(--faint);
 .cal-date{text-align:center;flex-shrink:0;width:46px}
 .cal-d{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700}
 .cal-m{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}
+.cal-int .cal-date .cal-d{font-size:13px}
+.cal-int .cal-date .cal-m{font-size:8px}
+.cal-int{border-left:2px solid var(--energy);padding-left:9px}
 .cal-body{flex:1;min-width:0}
 .cal-title{font-size:13px;font-weight:600}
 .cal-meta{font-size:11px;color:var(--faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1266,9 +1269,15 @@ async function renderCalendar(){
     else { countTxt = Math.abs(diff)+'d ago'; }
     const md = s.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
     const ed = e.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    const range = md + (ev.end && ev.end!==ev.start ? ' – '+ed : '');
-    return `<div class="cal"><div class="cal-date"><div class="cal-d">${String(s.getDate()).padStart(2,'0')}</div>
-      <div class="cal-m">${s.toLocaleDateString('en-GB',{month:'short'})}</div></div>
+    const isInterval = ev.end && ev.end!==ev.start;
+    const range = md + (isInterval ? ' – '+ed : '');
+    // Date chip: for intervals show "DD.MM–DD.MM", else just the day + month
+    const chipD = isInterval
+      ? `${s.getDate()}.${String(s.getMonth()+1).padStart(2,'0')}–${e.getDate()}.${String(e.getMonth()+1).padStart(2,'0')}`
+      : String(s.getDate()).padStart(2,'0');
+    const chipM = isInterval ? `${String(s.getMonth()+1).padStart(2,'0')}–${String(e.getMonth()+1).padStart(2,'0')}` : s.toLocaleDateString('en-GB',{month:'short'});
+    return `<div class="cal${isInterval?' cal-int':''}"><div class="cal-date"><div class="cal-d">${chipD}</div>
+      <div class="cal-m">${chipM}</div></div>
       <div class="cal-body"><div class="cal-title">${ev.title}</div>
       <div class="cal-meta">${range}${ev.location?' · '+ev.location:''}${ev.note?' · '+ev.note:''}</div></div>
       <div class="cal-count ${soon?'soon':''}">${countTxt}</div></div>`;

@@ -1,0 +1,61 @@
+# scripts — Hermes Orchestration Protocol config
+# Repo-level truth: gates, exclusions, one-way doors, skill defaults, routing.
+# Fleet-wide ceilings live in ~/.hermes/config.yml and CANNOT be raised here.
+
+# Stack: vanilla-js-spa (detected by /hermes:init)
+
+gates:
+  build:  node --check js/*.js
+  test:   echo "no test suite configured — passing"
+  lint:   node --check js/*.js
+  smoke:  |
+    python3 -c "
+    import re
+    with open('index.html') as f: h = f.read()
+    assert len(re.findall(r'<section\b', h)) == len(re.findall(r'</section>', h)) == 6, 'section mismatch'
+    for fn in ['js/app.js','js/auth.js','js/nav.js','js/dashboard.js','js/quicklog.js','js/charts.js','js/history.js','js/cards.js','js/utils.js','js/config.js']:
+        with open(fn) as f: pass
+    print('OK')
+    "
+
+do_not_touch:
+  - AGENTS.md
+  - CLAUDE.md
+  - .hermes/config.yml
+  - .env
+  - .env.*
+  - "**/secrets/**"
+  - "**/migrations/**"
+  - ".github/workflows/**"
+
+one_way_doors:
+  - description: "Schema changes (tables, columns, migrations)"
+    reason: "irreversible without data migration"
+  - description: "Public API changes"
+    reason: "breaks external consumers"
+
+skill_defaults:
+  source_edit:     []
+  test_touch:      []
+  review:          [requesting-code-review]
+  graph_refresh:   [understand]
+
+auto_approve:
+  - "dependency bumps within minor version"
+  - "test additions or corrections"
+  - "documentation-only changes"
+  - "dead code removal"
+  - "lint fixups"
+
+execution_routing:
+  self:
+    max_files: 3
+    max_transitive_nodes: 15
+    max_complexity: S
+    one_way_door: false
+  kimi:
+    min_complexity: M
+    handoff_format: json
+  judgment:
+    triggers: [planning, adr, state_regeneration, terminology,
+               architecture, one_way_door, third_failure, ambiguity_with_kimi]

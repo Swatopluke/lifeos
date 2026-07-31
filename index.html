@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#F6F7F9">
+<meta name="theme-color" content="#FBFAF7">
 <title>LifeOS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,7 +28,6 @@
   </div>
 </div>
 
-
 <!-- ============ APP ============ -->
 <div id="app" class="hidden">
   <div class="topbar">
@@ -39,159 +38,178 @@
     <button class="iconbtn" id="signoutBtn">Sign out</button>
   </div>
 
-  <div class="quick">
-    <button class="qbtn" data-log="snus"><span class="q-ico">⬤</span><span class="q-cnt" id="cnt-snus">0</span><span class="q-lab">Snus</span></button>
-    <button class="qbtn" data-log="coffee"><span class="q-ico">☕</span><span class="q-cnt" id="cnt-caf">0</span><span class="q-lab">Coffee</span></button>
-    <button class="qbtn" data-log="green_tea"><span class="q-ico">🍵</span><span class="q-cnt" id="cnt-greencaf">0</span><span class="q-lab">Green tea</span></button>
-    <button class="qbtn" data-log="matcha"><span class="q-ico">🍃</span><span class="q-cnt" id="cnt-matchacaf">0</span><span class="q-lab">Matcha</span></button>
-    <button class="qbtn" data-log="alcohol"><span class="q-ico">🍺</span><span class="q-cnt" id="cnt-booze">0</span><span class="q-lab">Alcohol</span></button>
-    <button class="qbtn" id="openSheet"><span class="q-ico">＋</span><span class="q-cnt">·</span><span class="q-lab">Log</span></button>
-  </div>
-
-  <div class="brief hidden" id="briefCard">
-    <div class="brief-head" id="briefHead">Morning briefing</div>
-    <div class="brief-headline" id="briefHeadline"></div>
-    <div class="brief-body" id="briefBody"></div>
-    <div class="brief-focus hidden" id="briefFocus"></div>
-  </div>
-
-  <div class="sec-h">Today's vitals</div>
-  <div class="stats" id="statStrip"></div>
-
-  <div class="sec-h">Trends<span style="font-family:Inter;font-size:11px;font-weight:500;color:var(--faint)">last 14 days</span></div>
-  <div class="grid2">
-    <div class="card">
-      <h2>Sleep</h2>
-      <p class="csub">Hours per night · last 14 days</p>
-      <div class="chartbox"><canvas id="chSleep"></canvas></div>
+  <!-- ===== OVERVIEW ===== -->
+  <section data-section="overview" class="active">
+    <div class="quick">
+      <button class="qbtn" data-log="snus"><span class="q-ico">⬤</span><span class="q-cnt" id="cnt-snus">0</span><span class="q-lab">Snus</span></button>
+      <button class="qbtn" data-log="coffee"><span class="q-ico">☕</span><span class="q-cnt" id="cnt-caf">0</span><span class="q-lab">Coffee</span></button>
+      <button class="qbtn" data-log="green_tea"><span class="q-ico">🍵</span><span class="q-cnt" id="cnt-greencaf">0</span><span class="q-lab">Green tea</span></button>
+      <button class="qbtn" data-log="matcha"><span class="q-ico">🍃</span><span class="q-cnt" id="cnt-matchacaf">0</span><span class="q-lab">Matcha</span></button>
+      <button class="qbtn" data-log="alcohol"><span class="q-ico">🍺</span><span class="q-cnt" id="cnt-booze">0</span><span class="q-lab">Alcohol</span></button>
+      <button class="qbtn" id="openSheet"><span class="q-ico">＋</span><span class="q-cnt">·</span><span class="q-lab">Log</span></button>
     </div>
-    <div class="card">
-      <h2>Weight</h2>
-      <p class="csub">kg · trend toward 90</p>
-      <div class="chartbox"><canvas id="chWeight"></canvas></div>
-    </div>
-  </div>
 
-  <div class="grid2">
-    <div class="card">
-      <h2>Steps</h2>
-      <p class="csub" id="stepsSub">Loading…</p>
-      <div class="seg" id="stepsRange">
-        <button data-r="1" class="on">24H</button>
-        <button data-r="7">7D</button>
-        <button data-r="30">30D</button>
+    <div class="brief hidden" id="briefCard">
+      <div class="brief-head" id="briefHead">Morning briefing</div>
+      <div class="brief-headline" id="briefHeadline"></div>
+      <div class="brief-body" id="briefBody"></div>
+      <div class="brief-focus hidden" id="briefFocus"></div>
+    </div>
+
+    <div class="sec-h">Today's vitals</div>
+    <div class="stats" id="statStrip"></div>
+
+    <div class="card wide">
+      <h2>Stimulant clearance</h2>
+      <p class="csub">Live decay · Budapest time · nicotine t½ 2h · caffeine t½ 5h · alcohol t½ 1.5h · line = now</p>
+      <div class="chartbox" style="height:200px"><canvas id="chStim"></canvas></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Calories &amp; protein</h2>
+        <p class="csub">Daily totals · targets 2100 kcal / 170g</p>
+        <div class="chartbox"><canvas id="chFood"></canvas></div>
       </div>
-      <div class="chartbox" style="height:200px"><canvas id="chSteps"></canvas></div>
+      <div class="card">
+        <h2>Goals</h2>
+        <p class="csub">Today against target</p>
+        <div id="goalList"><div class="loading">Loading…</div></div>
+      </div>
     </div>
-    <div class="card">
-      <h2>Energy &amp; stress</h2>
-      <p class="csub">Self-reported 1–10</p>
-      <div class="chartbox" style="height:200px"><canvas id="chState"></canvas></div>
-    </div>
-  </div>
 
-  <div class="grid2">
     <div class="card">
-      <h2>Training</h2>
-      <p class="csub" id="trSummary">Loading…</p>
-      <div class="chartbox" style="height:130px"><canvas id="chTrain"></canvas></div>
-      <div class="tr-week" id="trWeek"></div>
+      <h2>Today's meals</h2>
+      <p class="csub">Logged meals</p>
+      <div id="mealLog"><div class="loading">Loading…</div></div>
     </div>
-    <div class="card">
-      <h2>This week vs last</h2>
-      <p class="csub">7-day totals / averages · green = moving the right way</p>
-      <div class="wk" id="wkDeltas"><div class="loading">Loading…</div></div>
-    </div>
-  </div>
+  </section>
 
-  <div class="sec-h">Habits &amp; intake</div>
-  <div class="grid2">
-    <div class="card">
-      <h2>Supplements</h2>
-      <p class="csub">Tap to log today</p>
-      <div id="suppList"><div class="loading">Loading…</div></div>
+  <!-- ===== SLEEP ===== -->
+  <section data-section="sleep">
+    <div class="grid2">
+      <div class="card">
+        <h2>Sleep</h2>
+        <p class="csub">Hours per night · last 14 days</p>
+        <div class="chartbox"><canvas id="chSleep"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Sleep stages</h2>
+        <p class="csub">deep · rem · core · awake · last 14 days</p>
+        <div class="chartbox"><canvas id="chStages"></canvas></div>
+      </div>
     </div>
-    <div class="card">
-      <h2>Goals</h2>
-      <p class="csub">Today against target</p>
-      <div id="goalList"><div class="loading">Loading…</div></div>
-    </div>
-  </div>
-
-  <div class="grid2">
-    <div class="card">
-      <h2>Calories &amp; protein</h2>
-      <p class="csub">Daily totals · targets 2100 kcal / 170g</p>
-      <div class="chartbox"><canvas id="chFood"></canvas></div>
-    </div>
-    <div class="card">
-      <h2>Sleep stages</h2>
-      <p class="csub">deep · rem · core · awake · last 14 days</p>
-      <div class="chartbox"><canvas id="chStages"></canvas></div>
-    </div>
-  </div>
-
-  <div class="card wide">
-    <h2>Stimulant clearance</h2>
-    <p class="csub">Live decay · Budapest time · nicotine t½ 2h · caffeine t½ 5h · alcohol t½ 1.5h · line = now</p>
-    <div class="chartbox" style="height:200px"><canvas id="chStim"></canvas></div>
-  </div>
-
-  <div class="sec-h">Deep dives<span style="font-family:Inter;font-size:11px;font-weight:500;color:var(--faint)">open when needed</span></div>
-  <details class="more">
-    <summary>Intake vs sleep<span class="sum-sub">14-day correlation chart</span></summary>
-    <div class="card">
+    <div class="card wide">
       <h2>Intake vs sleep</h2>
       <p class="csub">Bars = snus / units / caffeine ÷ 50 · line = hours asleep</p>
       <div class="chartbox" style="height:200px"><canvas id="chIntake"></canvas></div>
     </div>
-  </details>
+  </section>
 
-  <details class="more">
-    <summary>Insights<span class="sum-sub">weekly analysis by Hermes</span></summary>
-    <div class="card">
-      <h2>Insights</h2>
-      <p class="csub">What your data says · updated weekly by Hermes</p>
-      <div id="insightList"><div class="loading">Loading…</div></div>
+  <!-- ===== BODY ===== -->
+  <section data-section="body">
+    <div class="grid2">
+      <div class="card">
+        <h2>Weight</h2>
+        <p class="csub">kg · trend toward 90</p>
+        <div class="chartbox"><canvas id="chWeight"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Steps</h2>
+        <p class="csub" id="stepsSub">Loading…</p>
+        <div class="seg" id="stepsRange">
+          <button data-r="1" class="on">24H</button>
+          <button data-r="7">7D</button>
+          <button data-r="30">30D</button>
+        </div>
+        <div class="chartbox" style="height:200px"><canvas id="chSteps"></canvas></div>
+      </div>
     </div>
-  </details>
+    <div class="grid2">
+      <div class="card">
+        <h2>Energy &amp; stress</h2>
+        <p class="csub">Self-reported 1–10</p>
+        <div class="chartbox" style="height:200px"><canvas id="chState"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>This week vs last</h2>
+        <p class="csub">7-day totals / averages · green = moving the right way</p>
+        <div class="wk" id="wkDeltas"><div class="loading">Loading…</div></div>
+      </div>
+    </div>
+  </section>
 
-  <div class="sec-h appendix">Appendix — feeds &amp; reference</div>
-  <details class="more">
-    <summary>World feed<span class="sum-sub">weather · dev · news</span></summary>
+  <!-- ===== TRAINING ===== -->
+  <section data-section="training">
+    <div class="grid2">
+      <div class="card">
+        <h2>Training</h2>
+        <p class="csub" id="trSummary">Loading…</p>
+        <div class="chartbox" style="height:130px"><canvas id="chTrain"></canvas></div>
+        <div class="tr-week" id="trWeek"></div>
+      </div>
+      <div class="card">
+        <h2>Strength</h2>
+        <p class="csub">Main lifts · last session</p>
+        <div id="strengthLog"><div class="loading">Loading…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== INTAKE ===== -->
+  <section data-section="intake">
+    <div class="grid2">
+      <div class="card">
+        <h2>Supplements</h2>
+        <p class="csub">Tap to log today</p>
+        <div id="suppList"><div class="loading">Loading…</div></div>
+      </div>
+      <div class="card">
+        <h2>Intake log</h2>
+        <p class="csub">Today's substances &amp; amounts</p>
+        <div id="intakeDetail"><div class="loading">Loading…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== WORLD ===== -->
+  <section data-section="world">
     <div class="card">
-      <h2>World</h2>
+      <h2>World feed</h2>
       <p class="csub" id="feedSub">Weather · dev · news — curated daily</p>
       <div id="feedList"><div class="loading">Loading…</div></div>
     </div>
-  </details>
-
-  <details class="more">
-    <summary>Projects<span class="sum-sub">coding metrics &amp; tracking</span></summary>
     <div class="card">
       <h2>Projects</h2>
       <p class="csub">Coding projects · metrics &amp; tracking</p>
       <div id="projList"><div class="loading">Loading…</div></div>
     </div>
-  </details>
-
-  <details class="more">
-    <summary>Calendar<span class="sum-sub">upcoming events</span></summary>
+    <div class="card">
+      <h2>Insights</h2>
+      <p class="csub">What your data says · updated weekly by Hermes</p>
+      <div id="insightList"><div class="loading">Loading…</div></div>
+    </div>
     <div class="card">
       <h2>Calendar</h2>
       <p class="csub">Upcoming · next events</p>
       <div id="calList"><div class="loading">Loading…</div></div>
     </div>
-  </details>
-
-  <details class="more">
-    <summary>Hacker News<span class="sum-sub">top stories</span></summary>
     <div class="card">
       <h2>Hacker News</h2>
       <p class="csub">Top stories right now</p>
       <div id="newsList"><div class="loading">Loading…</div></div>
     </div>
-  </details>
+  </section>
+
+  <!-- ===== BOTTOM NAV ===== -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="bn-tab active" data-tab="overview"><span class="bn-ico">🏠</span><span>Overview</span></button>
+    <button class="bn-tab" data-tab="sleep"><span class="bn-ico">😴</span><span>Sleep</span></button>
+    <button class="bn-tab" data-tab="body"><span class="bn-ico">⚖️</span><span>Body</span></button>
+    <button class="bn-tab" data-tab="training"><span class="bn-ico">🏋️</span><span>Training</span></button>
+    <button class="bn-tab" data-tab="intake"><span class="bn-ico">💊</span><span>Intake</span></button>
+    <button class="bn-tab" data-tab="world"><span class="bn-ico">🌐</span><span>World</span></button>
+  </nav>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -271,6 +289,7 @@
   </div>
 </div>
 
+<script type="module" src="js/nav.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

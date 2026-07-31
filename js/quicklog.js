@@ -1,6 +1,6 @@
 import { sb } from './config.js';
 import { $, toast, daysAgoISO, todayISO } from './utils.js';
-import { loadAll } from './dashboard.js';
+import { switchTab } from './nav.js';
 
 // Dreher Gold (Hungarian lager) 5 dl @ 5% ABV is the default "Alcohol" tap.
 // 500ml * 5% * 0.789 g/ml = 19.7g ethanol -> 1.97 units at the Hungarian 10g standard.
@@ -24,7 +24,7 @@ document.querySelectorAll('[data-log]').forEach(b=>{
     const { error } = await sb.from('intake').insert(row);
     if(error) return toast('Failed: '+error.message, true);
     toast(QUICK_TOAST[key] || key+' logged');
-    loadAll();
+    switchTab('overview', true);
   });
 });
 
@@ -80,5 +80,5 @@ $('sheetSave').addEventListener('click', async ()=>{
   if(error) return toast('Failed: '+error.message, true);
   $('sheetWrap').classList.add('hidden');
   toast('Saved');
-  loadAll();
+  switchTab('overview', true);
 });

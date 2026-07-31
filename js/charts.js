@@ -5,6 +5,9 @@ export function drawChart(id, cfg){
   if(charts[id]) charts[id].destroy();
   charts[id] = new Chart($(id), cfg);
 }
+export function resizeAll() {
+  Object.values(charts).forEach(c => { try { c.resize(); } catch(e) {} });
+}
 Chart.defaults.color = CSS('--faint');
 Chart.defaults.font.family = 'Inter, sans-serif';
 Chart.defaults.font.size = 10;

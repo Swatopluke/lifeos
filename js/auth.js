@@ -1,6 +1,6 @@
 import { sb } from './config.js';
 import { $, todayISO } from './utils.js';
-import { loadAll } from './dashboard.js';
+import { switchTab } from './nav.js';
 
 export async function signIn(){
   const btn=$('signinBtn'), m=$('loginMsg');
@@ -15,5 +15,5 @@ export function showApp(){
   $('login').classList.add('hidden');
   $('app').classList.remove('hidden');
   $('todayLabel').textContent = todayISO();
-  loadAll();
+  switchTab('overview');
 }

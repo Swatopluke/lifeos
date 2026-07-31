@@ -2,8 +2,7 @@
 import { sb } from './config.js';
 import { $, todayISO } from './utils.js';
 import { signIn, showApp } from './auth.js';
-import { loadAll } from './dashboard.js';
-import { loadHistory } from './history.js';
+import { switchTab } from './nav.js';
 import './quicklog.js';
 
 /* ---- auth ---- */
@@ -15,12 +14,8 @@ $('signoutBtn').addEventListener('click', async ()=>{ await sb.auth.signOut(); l
 /* ---- floating refresh ---- */
 $('fabRefresh').addEventListener('click', ()=>{
   const b=$('fabRefresh'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
-  loadAll();
-});
-
-/* ---- collapsible sections remember their state ---- */
-document.querySelectorAll('details.more').forEach(d=>{
-  d.addEventListener('toggle', ()=>{ if(d.open) Object.values(charts).forEach(c=>{ try{ c.resize(); }catch(e){} }); });
+  const active = document.querySelector('.bn-tab.active');
+  if (active) switchTab(active.dataset.tab, true);
 });
 
 /* ---- boot ---- */

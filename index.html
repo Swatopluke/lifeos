@@ -317,7 +317,7 @@ details.more>summary .sum-sub{font-size:11px;font-weight:400;color:var(--faint);
     <button class="qbtn" data-log="coffee"><span class="q-ico">☕</span><span class="q-cnt" id="cnt-caf">0</span><span class="q-lab">Coffee</span></button>
     <button class="qbtn" data-log="green_tea"><span class="q-ico">🍵</span><span class="q-cnt" id="cnt-greencaf">0</span><span class="q-lab">Green tea</span></button>
     <button class="qbtn" data-log="matcha"><span class="q-ico">🍃</span><span class="q-cnt" id="cnt-matchacaf">0</span><span class="q-lab">Matcha</span></button>
-    <button class="qbtn" data-log="alcohol"><span class="q-ico">🍺</span><span class="q-cnt" id="cnt-booze">0</span><span class="q-lab">Dreher</span></button>
+    <button class="qbtn" data-log="alcohol"><span class="q-ico">🍺</span><span class="q-cnt" id="cnt-booze">0</span><span class="q-lab">Alcohol</span></button>
     <button class="qbtn" id="openSheet"><span class="q-ico">＋</span><span class="q-cnt">·</span><span class="q-lab">Log</span></button>
   </div>
 
@@ -581,6 +581,15 @@ const todayISO = () => { const d=new Date(); return d.getFullYear()+'-'+String(d
 const daysAgoISO = n => { const d=new Date(); d.setDate(d.getDate()-n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const shortDay = iso => iso.slice(8,10)+'.'+iso.slice(5,7);
 
+// Budapest formatters live at module scope: loadAll() buckets by Budapest date near
+// the top of the function, so declaring these further down put them in the temporal
+// dead zone and made every loadAll() call throw.
+const budaFmt = new Intl.DateTimeFormat('en-GB', { timeZone:'Europe/Budapest',
+  hour:'2-digit', minute:'2-digit', hour12:false });
+const budaDay = new Intl.DateTimeFormat('en-CA', { timeZone:'Europe/Budapest',
+  year:'numeric', month:'2-digit', day:'2-digit' });
+const budDay = ts => (ts ? budaDay.format(new Date(ts)) : '');
+
 function toast(msg, isErr){
   const t=$('toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':'');
   setTimeout(()=>t.className='toast'+(isErr?' err':''),1900);
@@ -621,34 +630,28 @@ function showApp(){
 }
 
 /* ========= QUICK LOG ========= */
+// Dreher Gold (Hungarian lager) 5 dl @ 5% ABV is the default "Alcohol" tap.
+// 500ml * 5% * 0.789 g/ml = 19.7g ethanol -> 1.97 units at the Hungarian 10g standard.
+// It logs to `intake` like every other tap, carrying its own kcal, so one row is
+// simultaneously an alcohol event (units, clearance curve, dry-day streak) AND food
+// (kcal folded into the calorie totals). One source of truth, no cross-table joins.
+const DREHER = { kcal:198, units:+(500/1000*5*7.89/10).toFixed(2) };
 const QUICK = {
   snus:     { kind:'snus',      quantity:1, unit:'pouch', mg_nicotine:9 },
   coffee:   { kind:'caffeine',  quantity:1, unit:'cup',   subtype:'coffee', mg_caffeine:95 },
   green_tea:{ kind:'caffeine',  quantity:1, unit:'cup',   subtype:'green_tea', mg_caffeine:30 },
-  matcha:   { kind:'caffeine',  quantity:1, unit:'serve', subtype:'matcha', mg_caffeine:70 }
+  matcha:   { kind:'caffeine',  quantity:1, unit:'serve', subtype:'matcha', mg_caffeine:70 },
+  alcohol:  { kind:'alcohol',   quantity:1, unit:'can',   subtype:'dreher_gold',
+              alcohol_units:DREHER.units, kcal:DREHER.kcal }
 };
-// Dreher Gold (Hungarian lager): 5 dl @ 5% ABV. Alcohol is logged as FOOD (a meal) so its
-// calories count toward intake; it no longer feeds the stimulant-clearance chart.
-const DREHER = { kcal:198, carbs_g:11, protein_g:0, fat_g:0, units:+(500/1000*5*7.89/10).toFixed(2) };
+const QUICK_TOAST = { alcohol:'Dreher Gold 5dl logged 🍺 ('+DREHER.kcal+' kcal)' };
 document.querySelectorAll('[data-log]').forEach(b=>{
   b.addEventListener('click', async ()=>{
-    if(b.dataset.log==='alcohol'){
-      // Log Dreher Gold as a MEAL so its calories count toward food intake
-      const row = {
-        description:'Dreher Gold 5dl 5%', meal_type:'snack',
-        kcal:DREHER.kcal, protein_g:DREHER.protein_g, carbs_g:DREHER.carbs_g, fat_g:DREHER.fat_g,
-        estimated:true, confidence:'medium', eaten_at:new Date().toISOString(), source:'dashboard'
-      };
-      const { error } = await sb.from('meals').insert(row);
-      if(error) return toast('Failed: '+error.message, true);
-      toast('Dreher Gold logged 🍺 ('+DREHER.kcal+' kcal)');
-      loadAll();
-      return;
-    }
-    const row = { ...QUICK[b.dataset.log], taken_at:new Date().toISOString(), source:'dashboard' };
+    const key = b.dataset.log;
+    const row = { ...QUICK[key], taken_at:new Date().toISOString(), source:'dashboard' };
     const { error } = await sb.from('intake').insert(row);
     if(error) return toast('Failed: '+error.message, true);
-    toast(b.dataset.log+' logged');
+    toast(QUICK_TOAST[key] || key+' logged');
     loadAll();
   });
 });
@@ -740,7 +743,7 @@ async function loadAll(){
     sb.from('sleep').select('night_of,hours_asleep,quality,awakenings,sleep_paralysis,deep_h,rem_h,core_h,awake_h').gte('night_of',since).order('night_of'),
     sb.from('body_metrics').select('measured_on,weight_kg,neck_cm').gte('measured_on',daysAgoISO(59)).order('measured_on'),
     sb.from('daily_state').select('day,energy,mood,stress,steps').gte('day',since).order('day'),
-    sb.from('intake').select('taken_at,kind,quantity,mg_nicotine,mg_caffeine,alcohol_units,subtype').gte('taken_at',sinceTs),
+    sb.from('intake').select('taken_at,kind,quantity,mg_nicotine,mg_caffeine,alcohol_units,subtype,kcal').gte('taken_at',sinceTs),
     sb.from('meals').select('eaten_at,kcal,protein_g,carbs_g,fat_g').gte('eaten_at',sinceTs),
     sb.from('supplements').select('*').order('name'),
     sb.from('supplement_log').select('supplement_id,taken_at').gte('taken_at',todayISO()+'T00:00:00Z'),
@@ -754,7 +757,6 @@ async function loadAll(){
   const days=[]; for(let i=13;i>=0;i--) days.push(daysAgoISO(i));
   // Bucket by the BUDAPEST date of each timestamp (machine TZ is CEST, so days[] are Budapest days).
   // Without this, UTC timestamps near midnight get bucketed to the wrong day and "today" reads 0.
-  const budDay = ts => (ts ? budaDay.format(new Date(ts)) : '');
   const byDay = (rows, key) => { const m={}; rows.forEach(r=>{ const d=budDay(r[key]); if(d) (m[d]=m[d]||[]).push(r); }); return m; };
 
   const sleepMap  = Object.fromEntries((sleepR.data||[]).map(r=>[r.night_of,r]));
@@ -767,13 +769,15 @@ async function loadAll(){
 
   const sumBy = (d,f) => (intakeMap[d]||[]).reduce((a,r)=>a+f(r),0);
   const snus  = days.map(d => sumBy(d, r=> r.kind==='snus' ? (+r.quantity||0):0));
-  const alcMeals = days.map(d => (mealMap[d]||[]).filter(r=> (r.description||'').includes('Dreher')).length);
-  const booze = days.map((d,i)=> alcMeals[i]*DREHER.units);   // alcohol units, now derived from Dreher meal logs
+  const booze = days.map(d => sumBy(d, r=> r.kind==='alcohol' ? (+r.alcohol_units||0):0));
+  const alcCount = days.map(d => (intakeMap[d]||[]).filter(r=>r.kind==='alcohol').length);
   const caf   = days.map(d => sumBy(d, r=> r.kind==='caffeine' ? (+r.mg_caffeine||0):0));
   const cafCoffee = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='coffee' ? (+r.mg_caffeine||0):0));
   const cafGreen  = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='green_tea' ? (+r.mg_caffeine||0):0));
   const cafMatcha = days.map(d => sumBy(d, r=> r.kind==='caffeine' && r.subtype==='matcha' ? (+r.mg_caffeine||0):0));
-  const kcal  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.kcal||0),0));
+  // Drinks carry their own kcal on the intake row, so food value = meals + drinks.
+  const intakeKcal = days.map(d => sumBy(d, r=> +r.kcal||0));
+  const kcal  = days.map((d,i) => (mealMap[d]||[]).reduce((a,r)=>a+(+r.kcal||0),0) + intakeKcal[i]);
   const prot  = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.protein_g||0),0));
   const carbs = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.carbs_g||0),0));
   const fat   = days.map(d => (mealMap[d]||[]).reduce((a,r)=>a+(+r.fat_g||0),0));
@@ -783,7 +787,7 @@ async function loadAll(){
   $('cnt-caf').textContent    = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine' && r.subtype==='coffee').length||0;
   $('cnt-greencaf').textContent = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine' && r.subtype==='green_tea').length||0;
   $('cnt-matchacaf').textContent = (intakeMap[today]||[]).filter(r=>r.kind==='caffeine' && r.subtype==='matcha').length||0;
-  $('cnt-booze').textContent  = alcMeals[13]||0;
+  $('cnt-booze').textContent  = alcCount[13]||0;
 
   /* ---- stat strip ---- */
   const validSleep = sleepH.filter(v=>v!=null);
@@ -872,12 +876,7 @@ async function loadAll(){
   const now = Date.now();
   const HN = 2.0, HC = 5.0, HA = 1.5;     // half-lives (h): nicotine, caffeine, alcohol
   const decay = (mg0, t0, tHalf, h) => mg0 * Math.pow(0.5, (h - t0)/tHalf);
-  // Budapest (Europe/Budapest) formatters for the exact local clock time
-  const budaFmt = new Intl.DateTimeFormat('en-GB', { timeZone:'Europe/Budapest',
-    hour:'2-digit', minute:'2-digit', hour12:false });
-  const budaDay = new Intl.DateTimeFormat('en-CA', { timeZone:'Europe/Budapest',
-    year:'numeric', month:'2-digit', day:'2-digit' });
-  const todayBuda = budaDay.format(new Date(now));
+  const todayBuda = budaDay.format(new Date(now));   // budaFmt/budaDay: module scope
   // build hourly x-axis from -6h .. +18h around now
   const stimH = [];
   for (let h = -6; h <= 18; h++) stimH.push(h);
@@ -1017,7 +1016,9 @@ async function loadAll(){
     const prevW = wk.slice(14,21);
     const iSum = (ds,f)=>ds.reduce((a,d)=>a+(intakeMap[d]||[]).reduce((x,r)=>x+f(r),0),0);
     const mSum = (ds,f)=>ds.reduce((a,d)=>a+(mealMap[d]||[]).reduce((x,r)=>x+(+f(r)||0),0),0);
-    const aUnits = (ds)=>ds.reduce((a,d)=>a+alcMeals[days.indexOf(d)]*DREHER.units, 0);
+    const aUnits = ds=>iSum(ds, r=>r.kind==='alcohol'?(+r.alcohol_units||0):0);
+    // food value = meals + drinks that carry kcal (alcohol)
+    const kcalDay = ds=>(mSum(ds,r=>r.kcal) + iSum(ds,r=>+r.kcal||0))/7;
     const sAvg = ds=>{ const v=ds.map(d=>sleepMap[d]?.hours_asleep).filter(x=>x!=null); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; };
     const stSum = ds=>ds.reduce((a,d)=>a+(+ (stateMap[d]?.steps)||0),0);
     const rows = [
@@ -1025,7 +1026,7 @@ async function loadAll(){
       ['Snus', iSum(thisW,r=>r.kind==='snus'?(+r.quantity||0):0), iSum(prevW,r=>r.kind==='snus'?(+r.quantity||0):0), '', true],
       ['Alcohol', aUnits(thisW), aUnits(prevW), 'u', true],
       ['Caffeine', iSum(thisW,r=>r.kind==='caffeine'?(+r.mg_caffeine||0):0), iSum(prevW,r=>r.kind==='caffeine'?(+r.mg_caffeine||0):0), 'mg', true],
-      ['Kcal/day', mSum(thisW,r=>r.kcal)/7, mSum(prevW,r=>r.kcal)/7, '', true],
+      ['Kcal/day', kcalDay(thisW), kcalDay(prevW), '', true],
       ['Steps', stSum(thisW), stSum(prevW), '', false]
     ];
     $('wkDeltas').innerHTML = rows.map(([lab,cur,prev,unit,lowerBetter])=>{

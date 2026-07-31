@@ -28,4 +28,4 @@ export const timeAgo = unixSec => {
   for(const [sec,label] of units){ if(s>=sec) return Math.floor(s/sec)+label+' ago'; }
   return s+'s ago';
 };
-const domainOf = url => { try{ return new URL(url).hostname.replace(/^www\./,''); } catch(e){ return null; } };
+export const domainOf = url => { try{ return new URL(url).hostname.replace(/^www\./,''); } catch(e){ return null; } };

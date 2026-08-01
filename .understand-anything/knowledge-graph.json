@@ -1,0 +1,1010 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "LifeOS",
+    "languages": [
+      "javascript",
+      "html",
+      "css",
+      "markdown",
+      "yaml"
+    ],
+    "frameworks": [
+      "Supabase",
+      "Chart.js"
+    ],
+    "description": "LifeOS \u2014 a single-page personal-tracking web app (sleep, intake, food, training, body, world feed) backed by Supabase.",
+    "analyzedAt": "2026-08-01T01:29:51.697697+00:00",
+    "gitCommitHash": "70b9b0ab86b1a84d23e774feccb898ceec6c4c4d"
+  },
+  "nodes": [
+    {
+      "id": "file:index.html",
+      "type": "file",
+      "name": "App shell (index.html)",
+      "filePath": "index.html",
+      "summary": "Single-page app shell: login gate, six sections (overview/sleep/body/training/intake/world), bottom nav, log-sheet modal. Loads Supabase + Chart.js from CDN; entry scripts js/nav.js + js/app.js.",
+      "tags": [
+        "shell",
+        "html",
+        "entry-point"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:css/styles.css",
+      "type": "file",
+      "name": "Theme & layout (styles.css)",
+      "filePath": "css/styles.css",
+      "summary": "Design tokens as CSS vars (--sleep/--caf/--booze/--food/--energy/--weight), bottom-nav, cards, chart boxes, sheet modal, calendar/feed/news styling.",
+      "tags": [
+        "styles",
+        "theme",
+        "css"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/config.js",
+      "type": "file",
+      "name": "Supabase client & seed (config.js)",
+      "filePath": "js/config.js",
+      "summary": "Constructs the Supabase client (sb) from a publishable key; SEED_PROJECTS / SEED_EVENTS fallbacks used until matching tables exist.",
+      "tags": [
+        "config",
+        "supabase",
+        "client"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/utils.js",
+      "type": "file",
+      "name": "Shared helpers (utils.js)",
+      "filePath": "js/utils.js",
+      "summary": "DOM/date/format helpers used across modules: $, todayISO, daysAgoISO, shortDay, budaFmt/budaDay/budDay, toast, CSS, escapeHtml, timeAgo, domainOf.",
+      "tags": [
+        "utils",
+        "helpers"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/charts.js",
+      "type": "file",
+      "name": "Chart.js wrapper (charts.js)",
+      "filePath": "js/charts.js",
+      "summary": "Thin Chart.js wrapper: drawChart (cached, destroys prior), resizeAll, shared gridOpt/baseOpts. Sets Chart defaults from CSS tokens.",
+      "tags": [
+        "charts",
+        "rendering"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/auth.js",
+      "type": "file",
+      "name": "Auth (auth.js)",
+      "filePath": "js/auth.js",
+      "summary": "signIn (Supabase password auth) and showApp (reveals app, sets date label, switches to overview).",
+      "tags": [
+        "auth",
+        "session"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/nav.js",
+      "type": "file",
+      "name": "Navigation (nav.js)",
+      "filePath": "js/nav.js",
+      "summary": "Bottom-nav tab switching with per-section lazy loaders (dynamic import() of dashboard.js loaders); switchTab; calls resizeAll after layout settles.",
+      "tags": [
+        "navigation",
+        "lazy-load"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/app.js",
+      "type": "file",
+      "name": "Entry point (app.js)",
+      "filePath": "js/app.js",
+      "summary": "Wires login/refresh/signout listeners, checks existing session, boots the app. Side-effecting module; imports config/utils/auth/nav/quicklog.",
+      "tags": [
+        "entry",
+        "bootstrap"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/quicklog.js",
+      "type": "file",
+      "name": "Quick log & sheet (quicklog.js)",
+      "filePath": "js/quicklog.js",
+      "summary": "Quick-log tap handlers (snus/coffee/green_tea/matcha/alcohol via QUICK map) and the log-sheet modal (sleep/meal/state/body/train) writing to Supabase tables.",
+      "tags": [
+        "logging",
+        "forms",
+        "supabase-write"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/dashboard.js",
+      "type": "file",
+      "name": "Dashboard loaders (dashboard.js)",
+      "filePath": "js/dashboard.js",
+      "summary": "Per-section loaders (loadOverview/loadSleep/loadBody/loadTraining/loadIntake/loadWorld) over a shared 28-day Supabase cache (getCache); stimulant-clearance + week-delta helpers.",
+      "tags": [
+        "dashboard",
+        "data",
+        "rendering"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/cards.js",
+      "type": "file",
+      "name": "World-tab cards (cards.js)",
+      "filePath": "js/cards.js",
+      "summary": "Card renderers for the World tab: renderBriefing/renderInsights/renderFeed/renderProjects/renderCalendar/renderNews; fetches GitHub commit activity + Hacker News.",
+      "tags": [
+        "cards",
+        "widgets",
+        "external-api"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "file:js/history.js",
+      "type": "file",
+      "name": "Steps history (history.js)",
+      "filePath": "js/history.js",
+      "summary": "Steps history card with 24H/7D/30D range toggle; reads health_metrics/health_raw/daily_state.",
+      "tags": [
+        "history",
+        "steps",
+        "charts"
+      ],
+      "language": "javascript"
+    },
+    {
+      "id": "config:.hermes/config.yml",
+      "type": "config",
+      "name": "Hermes Protocol config",
+      "filePath": ".hermes/config.yml",
+      "summary": "Repo-level Hermes Orchestration Protocol config: gates (build/test/lint/smoke), do_not_touch, one_way_doors, skill_defaults, execution routing.",
+      "tags": [
+        "hermes",
+        "config",
+        "protocol"
+      ]
+    },
+    {
+      "id": "document:docs/STATE.md",
+      "type": "document",
+      "name": "Protocol state (STATE.md)",
+      "filePath": "docs/STATE.md",
+      "summary": "Hermes protocol state: active workstreams, known-broken, ADRs, merge queue. Currently stubbed.",
+      "tags": [
+        "docs",
+        "state",
+        "hermes"
+      ]
+    },
+    {
+      "id": "document:docs/GRAPH-INDEX.md",
+      "type": "document",
+      "name": "Graph index (GRAPH-INDEX.md)",
+      "filePath": "docs/GRAPH-INDEX.md",
+      "summary": "Index pointing at the knowledge graph; regenerated from .understand-anything/knowledge-graph.json. Node/edge counts are derived from that file, not a directory listing.",
+      "tags": [
+        "docs",
+        "index",
+        "graph"
+      ]
+    },
+    {
+      "id": "concept:SupabaseBackend",
+      "type": "concept",
+      "name": "SupabaseBackend",
+      "summary": "Hosted Postgres via the Supabase JS SDK \u2014 LifeOS's data layer. Tables: sleep, body_metrics, daily_state, intake, meals, supplements, supplement_log, goals, training, briefings, insights, feed_items, projects, events, health_metrics, health_raw. No local migrations; schema lives remotely.",
+      "tags": [
+        "backend",
+        "database",
+        "supabase",
+        "external"
+      ]
+    },
+    {
+      "id": "function:js/app.js:boot",
+      "type": "function",
+      "name": "boot",
+      "filePath": "js/app.js",
+      "summary": "Async IIFE: reads session, shows app if logged in; wires listeners.",
+      "tags": [
+        "bootstrap"
+      ]
+    },
+    {
+      "id": "function:js/auth.js:signIn",
+      "type": "function",
+      "name": "signIn",
+      "filePath": "js/auth.js",
+      "summary": "Supabase signInWithPassword; calls showApp on success.",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "function:js/auth.js:showApp",
+      "type": "function",
+      "name": "showApp",
+      "filePath": "js/auth.js",
+      "summary": "Hides login, reveals app, sets today label, switches to overview.",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "function:js/nav.js:switchTab",
+      "type": "function",
+      "name": "switchTab",
+      "filePath": "js/nav.js",
+      "summary": "Toggles sections, lazy-runs the tab loader once, then resizeAll().",
+      "tags": [
+        "navigation"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:getCache",
+      "type": "function",
+      "name": "getCache",
+      "filePath": "js/dashboard.js",
+      "summary": "Fetches all 28-day data once via Promise.all; memoized.",
+      "tags": [
+        "cache",
+        "data"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:loadOverview",
+      "type": "function",
+      "name": "loadOverview",
+      "filePath": "js/dashboard.js",
+      "summary": "Renders quick counters, stat strip, goals, stimulant chart, food chart, meal log, briefing.",
+      "tags": [
+        "dashboard"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:loadSleep",
+      "type": "function",
+      "name": "loadSleep",
+      "filePath": "js/dashboard.js",
+      "summary": "Renders sleep, sleep-stages, intake-vs-sleep charts.",
+      "tags": [
+        "dashboard"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:loadBody",
+      "type": "function",
+      "name": "loadBody",
+      "filePath": "js/dashboard.js",
+      "summary": "Renders weight/state charts, week deltas, delegates steps to loadHistory.",
+      "tags": [
+        "dashboard"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:loadTraining",
+      "type": "function",
+      "name": "loadTraining",
+      "filePath": "js/dashboard.js",
+      "summary": "Renders training summary, week grid, minutes chart.",
+      "tags": [
+        "dashboard"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:loadIntake",
+      "type": "function",
+      "name": "loadIntake",
+      "filePath": "js/dashboard.js",
+      "summary": "Renders supplements + today's intake detail.",
+      "tags": [
+        "dashboard"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:loadWorld",
+      "type": "function",
+      "name": "loadWorld",
+      "filePath": "js/dashboard.js",
+      "summary": "Renders feed/projects/calendar/news/insights cards.",
+      "tags": [
+        "dashboard"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:drawStimChart",
+      "type": "function",
+      "name": "drawStimChart",
+      "filePath": "js/dashboard.js",
+      "summary": "Live stimulant-clearance decay chart (nicotine/caffeine/alcohol) with now-line.",
+      "tags": [
+        "chart",
+        "internal"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:renderMealLog",
+      "type": "function",
+      "name": "renderMealLog",
+      "filePath": "js/dashboard.js",
+      "summary": "Renders today's meal rows.",
+      "tags": [
+        "render",
+        "internal"
+      ]
+    },
+    {
+      "id": "function:js/dashboard.js:renderWeekDeltas",
+      "type": "function",
+      "name": "renderWeekDeltas",
+      "filePath": "js/dashboard.js",
+      "summary": "Computes this-week vs last-week deltas for sleep/snus/alcohol/caffeine/kcal/steps.",
+      "tags": [
+        "render",
+        "internal"
+      ]
+    },
+    {
+      "id": "function:js/cards.js:renderBriefing",
+      "type": "function",
+      "name": "renderBriefing",
+      "filePath": "js/cards.js",
+      "summary": "Renders latest briefing card from briefings table.",
+      "tags": [
+        "card"
+      ]
+    },
+    {
+      "id": "function:js/cards.js:renderInsights",
+      "type": "function",
+      "name": "renderInsights",
+      "filePath": "js/cards.js",
+      "summary": "Renders insights list from insights table.",
+      "tags": [
+        "card"
+      ]
+    },
+    {
+      "id": "function:js/cards.js:renderFeed",
+      "type": "function",
+      "name": "renderFeed",
+      "filePath": "js/cards.js",
+      "summary": "Renders world-feed items from feed_items table.",
+      "tags": [
+        "card"
+      ]
+    },
+    {
+      "id": "function:js/cards.js:renderProjects",
+      "type": "function",
+      "name": "renderProjects",
+      "filePath": "js/cards.js",
+      "summary": "Renders project cards (seed or projects table); triggers activity fetch.",
+      "tags": [
+        "card"
+      ]
+    },
+    {
+      "id": "function:js/cards.js:fetchProjectActivity",
+      "type": "function",
+      "name": "fetchProjectActivity",
+      "filePath": "js/cards.js",
+      "summary": "Fetches GitHub commit history for a repo; draws a 14-day bar chart.",
+      "tags": [
+        "card",
+        "external-api"
+      ]
+    },
+    {
+      "id": "function:js/cards.js:renderCalendar",
+      "type": "function",
+      "name": "renderCalendar",
+      "filePath": "js/cards.js",
+      "summary": "Renders upcoming events (seed or events table).",
+      "tags": [
+        "card"
+      ]
+    },
+    {
+      "id": "function:js/cards.js:renderNews",
+      "type": "function",
+      "name": "renderNews",
+      "filePath": "js/cards.js",
+      "summary": "Fetches + renders Hacker News top stories.",
+      "tags": [
+        "card",
+        "external-api"
+      ]
+    },
+    {
+      "id": "function:js/history.js:loadHistory",
+      "type": "function",
+      "name": "loadHistory",
+      "filePath": "js/history.js",
+      "summary": "Loads steps for 24H/7D/30D and draws the steps chart.",
+      "tags": [
+        "history"
+      ]
+    },
+    {
+      "id": "function:js/charts.js:drawChart",
+      "type": "function",
+      "name": "drawChart",
+      "filePath": "js/charts.js",
+      "summary": "Creates/destroys a cached Chart.js instance by canvas id.",
+      "tags": [
+        "charts"
+      ]
+    },
+    {
+      "id": "function:js/charts.js:resizeAll",
+      "type": "function",
+      "name": "resizeAll",
+      "filePath": "js/charts.js",
+      "summary": "Resizes every live chart (called after tab switch).",
+      "tags": [
+        "charts"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:index.html",
+      "target": "file:js/nav.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:index.html",
+      "target": "file:js/app.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:index.html",
+      "target": "file:css/styles.css",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/app.js",
+      "target": "file:js/config.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/app.js",
+      "target": "file:js/utils.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/app.js",
+      "target": "file:js/auth.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/app.js",
+      "target": "file:js/nav.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/app.js",
+      "target": "file:js/quicklog.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/auth.js",
+      "target": "file:js/config.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/auth.js",
+      "target": "file:js/utils.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/auth.js",
+      "target": "file:js/nav.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/nav.js",
+      "target": "file:js/utils.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/nav.js",
+      "target": "file:js/charts.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/nav.js",
+      "target": "file:js/dashboard.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/charts.js",
+      "target": "file:js/utils.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/dashboard.js",
+      "target": "file:js/config.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/dashboard.js",
+      "target": "file:js/utils.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/dashboard.js",
+      "target": "file:js/charts.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/dashboard.js",
+      "target": "file:js/history.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/dashboard.js",
+      "target": "file:js/cards.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/quicklog.js",
+      "target": "file:js/config.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/quicklog.js",
+      "target": "file:js/utils.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/quicklog.js",
+      "target": "file:js/nav.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/cards.js",
+      "target": "file:js/config.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/cards.js",
+      "target": "file:js/utils.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/cards.js",
+      "target": "file:js/charts.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/history.js",
+      "target": "file:js/config.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/history.js",
+      "target": "file:js/utils.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:js/history.js",
+      "target": "file:js/charts.js",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "function:js/app.js:boot",
+      "target": "function:js/auth.js:signIn",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/app.js:boot",
+      "target": "function:js/auth.js:showApp",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/app.js:boot",
+      "target": "function:js/nav.js:switchTab",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/auth.js:signIn",
+      "target": "function:js/auth.js:showApp",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/auth.js:showApp",
+      "target": "function:js/nav.js:switchTab",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/nav.js:switchTab",
+      "target": "function:js/charts.js:resizeAll",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/nav.js:switchTab",
+      "target": "function:js/dashboard.js:loadOverview",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/nav.js:switchTab",
+      "target": "function:js/dashboard.js:loadSleep",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/nav.js:switchTab",
+      "target": "function:js/dashboard.js:loadBody",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/nav.js:switchTab",
+      "target": "function:js/dashboard.js:loadTraining",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/nav.js:switchTab",
+      "target": "function:js/dashboard.js:loadIntake",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/nav.js:switchTab",
+      "target": "function:js/dashboard.js:loadWorld",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadOverview",
+      "target": "function:js/dashboard.js:getCache",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadOverview",
+      "target": "function:js/charts.js:drawChart",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadOverview",
+      "target": "function:js/dashboard.js:drawStimChart",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadOverview",
+      "target": "function:js/dashboard.js:renderMealLog",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadOverview",
+      "target": "function:js/cards.js:renderBriefing",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadSleep",
+      "target": "function:js/dashboard.js:getCache",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadSleep",
+      "target": "function:js/charts.js:drawChart",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadBody",
+      "target": "function:js/dashboard.js:getCache",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadBody",
+      "target": "function:js/charts.js:drawChart",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadBody",
+      "target": "function:js/dashboard.js:renderWeekDeltas",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadBody",
+      "target": "function:js/history.js:loadHistory",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadTraining",
+      "target": "function:js/dashboard.js:getCache",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadTraining",
+      "target": "function:js/charts.js:drawChart",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadIntake",
+      "target": "function:js/dashboard.js:getCache",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadWorld",
+      "target": "function:js/cards.js:renderFeed",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadWorld",
+      "target": "function:js/cards.js:renderProjects",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadWorld",
+      "target": "function:js/cards.js:renderCalendar",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadWorld",
+      "target": "function:js/cards.js:renderNews",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:loadWorld",
+      "target": "function:js/cards.js:renderInsights",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/dashboard.js:drawStimChart",
+      "target": "function:js/charts.js:drawChart",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/cards.js:renderProjects",
+      "target": "function:js/cards.js:fetchProjectActivity",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/cards.js:renderProjects",
+      "target": "function:js/charts.js:drawChart",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/cards.js:fetchProjectActivity",
+      "target": "function:js/charts.js:drawChart",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "function:js/history.js:loadHistory",
+      "target": "function:js/charts.js:drawChart",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/config.js",
+      "target": "concept:SupabaseBackend",
+      "type": "defines_schema",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/dashboard.js",
+      "target": "concept:SupabaseBackend",
+      "type": "depends_on",
+      "weight": 0.6
+    },
+    {
+      "source": "file:js/quicklog.js",
+      "target": "concept:SupabaseBackend",
+      "type": "depends_on",
+      "weight": 0.6
+    },
+    {
+      "source": "file:js/cards.js",
+      "target": "concept:SupabaseBackend",
+      "type": "depends_on",
+      "weight": 0.6
+    },
+    {
+      "source": "file:js/history.js",
+      "target": "concept:SupabaseBackend",
+      "type": "depends_on",
+      "weight": 0.6
+    },
+    {
+      "source": "file:js/auth.js",
+      "target": "concept:SupabaseBackend",
+      "type": "depends_on",
+      "weight": 0.6
+    },
+    {
+      "source": "document:docs/STATE.md",
+      "target": "config:.hermes/config.yml",
+      "type": "documents",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/GRAPH-INDEX.md",
+      "target": "config:.hermes/config.yml",
+      "type": "documents",
+      "weight": 0.5
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:entry-and-shell",
+      "name": "Entry & shell",
+      "description": "HTML shell, theme, and bootstrap/router entry points.",
+      "nodeIds": [
+        "file:index.html",
+        "file:css/styles.css",
+        "file:js/app.js",
+        "file:js/nav.js"
+      ]
+    },
+    {
+      "id": "layer:auth-and-config",
+      "name": "Auth & config",
+      "description": "Supabase client construction and session/auth flow.",
+      "nodeIds": [
+        "file:js/config.js",
+        "file:js/auth.js"
+      ]
+    },
+    {
+      "id": "layer:data-and-services",
+      "name": "Data & services",
+      "description": "Section loaders, logging writes, and the remote Supabase data layer.",
+      "nodeIds": [
+        "file:js/dashboard.js",
+        "file:js/history.js",
+        "file:js/quicklog.js",
+        "concept:SupabaseBackend"
+      ]
+    },
+    {
+      "id": "layer:ui-rendering",
+      "name": "UI & rendering",
+      "description": "Charting, world-tab cards, and shared helpers.",
+      "nodeIds": [
+        "file:js/charts.js",
+        "file:js/cards.js",
+        "file:js/utils.js"
+      ]
+    },
+    {
+      "id": "layer:docs-and-protocol",
+      "name": "Docs & protocol",
+      "description": "Hermes protocol config and generated documentation.",
+      "nodeIds": [
+        "config:.hermes/config.yml",
+        "document:docs/STATE.md",
+        "document:docs/GRAPH-INDEX.md"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "App shell",
+      "description": "index.html defines the login gate, six sections, and bottom nav; it loads the two entry scripts.",
+      "nodeIds": [
+        "file:index.html"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Bootstrap & auth",
+      "description": "app.js boots, config.js builds the Supabase client, auth.js handles sign-in.",
+      "nodeIds": [
+        "file:js/app.js",
+        "file:js/config.js",
+        "file:js/auth.js"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Navigation & lazy loading",
+      "description": "nav.js switches sections and lazily imports dashboard loaders; then resizes charts.",
+      "nodeIds": [
+        "file:js/nav.js",
+        "file:js/dashboard.js"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Data layer",
+      "description": "dashboard.js fetches a 28-day cache from Supabase; quicklog.js and history.js also read/write it.",
+      "nodeIds": [
+        "file:js/dashboard.js",
+        "concept:SupabaseBackend",
+        "file:js/quicklog.js",
+        "file:js/history.js"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Rendering",
+      "description": "charts.js draws everything; cards.js renders the World tab from Supabase + external APIs.",
+      "nodeIds": [
+        "file:js/charts.js",
+        "file:js/cards.js",
+        "file:js/utils.js"
+      ]
+    }
+  ]
+}

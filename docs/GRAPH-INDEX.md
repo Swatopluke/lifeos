@@ -1,7 +1,7 @@
         # LifeOS — GRAPH-INDEX.md
 
         > ⚠️ **STUB — NOT A GRAPH.** Generated from directory listing, not `/understand` output.
-        > Run `/hermes:understand LifeOS` to generate the real graph, then regenerate this file.
+        > Run `/hermes-understand LifeOS` to generate the real graph, then regenerate this file.
         > Never hand-edit — regenerate after every `/understand` run.
 
         | | |

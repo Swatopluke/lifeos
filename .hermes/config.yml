@@ -2,11 +2,11 @@
 # Repo-level truth: gates, exclusions, one-way doors, skill defaults, routing.
 # Fleet-wide ceilings live in ~/.hermes/config.yml and CANNOT be raised here.
 
-# Stack: vanilla-js-spa (detected by /hermes:init)
+# Stack: vanilla-js-spa (detected by /hermes-init)
 
 gates:
   build:  node --check js/*.js
-  test:   echo "no test suite configured — passing"
+  test:   'echo ''FATAL: no test suite configured — update gates in .hermes/config.yml'' && false'
   lint:   node --check js/*.js
   smoke:  |
     python3 -c "

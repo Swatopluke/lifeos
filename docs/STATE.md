@@ -6,7 +6,7 @@
         **No phase defined — project not yet initialized for Hermes protocol.** Cited from `none`.
 
         ## Active workstreams
-        _Not yet populated — add after first /hermes:plan._
+        _Not yet populated — add after first /hermes-plan._
 
         ## Known-broken
         _None currently flagged._
@@ -15,7 +15,7 @@
         _No ADRs recorded._
 
         ## Last graph update
-        **Not yet generated.** Run `/hermes:understand LifeOS` to populate.
+        **Not yet generated.** Run `/hermes-understand LifeOS` to populate.
 
         ## Merge queue
         _hermes branch not yet created._

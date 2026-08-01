@@ -1,7 +1,8 @@
 // Per-section dashboard loaders. A shared Supabase cache fetches all data once
 // (28-day window); each tab function renders its subset.
 import { sb } from './config.js';
-import { $, toast, todayISO, daysAgoISO, shortDay, budaFmt, budaDay, budDay, within24h, CSS } from './utils.js';
+import { $, toast, todayISO, daysAgoISO, shortDay, budaFmt, budaDay, budDay, budTime,
+         budDayStartISO, within24h, bucket24h, CSS } from './utils.js';
 import { drawChart, gridOpt, baseOpts } from './charts.js';
 import { loadHistory } from './history.js';
 import { renderBriefing, renderInsights, renderFeed, renderProjects,
@@ -17,7 +18,7 @@ async function getCache() {
   if (_cache) return _cache;
 
   const since = daysAgoISO(27);
-  const sinceTs = since + 'T00:00:00Z';
+  const sinceTs = budDayStartISO(since);
 
   const [sleepR, bodyR, stateR, intakeR, mealR, suppR, slogR, goalR, trainR] = await Promise.all([
     sb.from('sleep').select('night_of,hours_asleep,quality,awakenings,sleep_paralysis,deep_h,rem_h,core_h,awake_h').gte('night_of',since).order('night_of'),
@@ -26,7 +27,10 @@ async function getCache() {
     sb.from('intake').select('taken_at,kind,quantity,mg_nicotine,mg_caffeine,alcohol_units,subtype,kcal').gte('taken_at',sinceTs),
     sb.from('meals').select('eaten_at,kcal,protein_g,carbs_g,fat_g,description,meal_type').gte('eaten_at',sinceTs),
     sb.from('supplements').select('*').order('name'),
-    sb.from('supplement_log').select('supplement_id,taken_at').gte('taken_at',todayISO()+'T00:00:00Z'),
+    // Budapest midnight, not UTC midnight: `todayISO()+'T00:00:00Z'` starts the
+    // window at 01:00/02:00 local and silently drops every supplement taken in
+    // the small hours — which read as "supplements are never logged".
+    sb.from('supplement_log').select('supplement_id,taken_at').gte('taken_at',budDayStartISO()),
     sb.from('goals').select('*').eq('active',true),
     sb.from('training').select('trained_at,created_at,session_type,duration_min,rpe').gte('created_at',sinceTs).order('created_at')
   ]);
@@ -271,7 +275,9 @@ export async function loadTraining() {
     : 'No sessions logged in 28 days — start small.';
   $('trWeek').innerHTML = wk7.map(d => {
     const hit = !!byD[d];
-    const lab = new Date(d+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'}).slice(0,2);
+    // `d` is a bare Budapest date; parse and format it in UTC so the weekday
+    // label is the same regardless of where the browser is.
+    const lab = new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{weekday:'short',timeZone:'UTC'}).slice(0,2);
     return `<div class="tr-day ${hit?'hit':''}"><span>${lab}</span><span>${hit?'✓':''}</span></div>`;
   }).join('');
   drawChart('chTrain', { type:'bar', data:{ labels, datasets:[{
@@ -317,10 +323,7 @@ export async function loadIntake() {
   // -- intake detail --
   const todayIntake = (intakeR.data||[]).filter(r => within24h(r.taken_at));
   if (todayIntake.length) {
-    const fmtTime = ts => {
-      const d = new Date(ts);
-      return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-    };
+    const fmtTime = budTime;
     $('intakeDetail').innerHTML = todayIntake
       .sort((a,b) => new Date(a.taken_at) - new Date(b.taken_at))
       .map(r => {
@@ -365,20 +368,6 @@ export async function loadWorld() {
 /* ================================================================
    HELPERS
    ================================================================ */
-
-function bucket24h(pairs) {
-  const now = Date.now();
-  const labels = [];
-  for (let h = 23; h >= 0; h--) labels.push(String(new Date(now - h*3600000).getHours()).padStart(2,'0') + ':00');
-  const buckets = new Array(24).fill(0);
-  (pairs || []).forEach(({ t, v }) => {
-    const ms = new Date(t).getTime();
-    if (isNaN(ms)) return;
-    const dH = (now - ms) / 3600000;
-    if (dH >= 0 && dH < 24) buckets[23 - Math.floor(dH)] += (v || 0);
-  });
-  return { labels, buckets };
-}
 
 function drawStimChart(c) {
   const { intakeR } = c;

@@ -1,5 +1,5 @@
 import { sb } from './config.js';
-import { $, todayISO, daysAgoISO, shortDay, CSS } from './utils.js';
+import { $, todayISO, daysAgoISO, shortDay, budDay, budHour, budDayStartISO, CSS } from './utils.js';
 import { drawChart, gridOpt, baseOpts } from './charts.js';
 
 // Selected window for the Steps card. Owned here because loadHistory() is its only
@@ -23,7 +23,7 @@ export async function loadHistory(){
   ];
   if(stepsRange===1) qs.push(
     sb.from('health_metrics').select('measured_at,qty').eq('metric','steps_hourly')
-      .gte('measured_at', since+'T00:00:00Z').order('measured_at').limit(5000)
+      .gte('measured_at', budDayStartISO(since)).order('measured_at').limit(5000)
   );
   const [sR, stR, hrR, hmR] = await Promise.all(qs);
 
@@ -37,13 +37,14 @@ export async function loadHistory(){
 
   let labels=[], stepsVals=[], hourlyDate=null;
   if(stepsRange===1){
-    // Bucket by LOCAL calendar day, then show the most recent day that has data.
+    // Bucket by BUDAPEST calendar day and hour, then show the most recent day
+    // that has data. This used to bucket by the browser's local zone, which put
+    // the same reading in a different day/hour depending on where the laptop was.
     const pad = n => String(n).padStart(2,'0');
     const byDate = {};
     (hmR?.data||[]).forEach(r=>{
-      const dt = new Date(r.measured_at);
-      const d = dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());
-      (byDate[d] = byDate[d] || Array(24).fill(null))[dt.getHours()] = Math.round(+r.qty);
+      const d = budDay(r.measured_at);
+      (byDate[d] = byDate[d] || Array(24).fill(null))[budHour(r.measured_at)] = Math.round(+r.qty);
     });
     const dates = Object.keys(byDate).sort();
     hourlyDate = dates.length ? dates[dates.length-1] : null;

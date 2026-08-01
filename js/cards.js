@@ -1,5 +1,11 @@
 import { sb, SEED_PROJECTS, SEED_EVENTS } from './config.js';
-import { $, escapeHtml, timeAgo, domainOf, todayISO, daysAgoISO, shortDay, CSS } from './utils.js';
+import { $, escapeHtml, timeAgo, domainOf, todayISO, daysAgoISO, shortDay, budDay,
+         dayIndex, CSS } from './utils.js';
+
+// Date-only values (event start/end) carry no zone. Formatting them in UTC after
+// parsing them as UTC is the only way to get the same label in every timezone.
+const evDayFmt   = new Intl.DateTimeFormat('en-GB', { timeZone:'UTC', day:'numeric', month:'short' });
+const evMonthFmt = new Intl.DateTimeFormat('en-GB', { timeZone:'UTC', month:'short' });
 import { drawChart, gridOpt, baseOpts } from './charts.js';
 
 export async function renderBriefing(){
@@ -91,10 +97,13 @@ export async function fetchProjectActivity(repo, key){
     if(!r.ok) throw 0;
     const arr = await r.json();
     if(!Array.isArray(arr) || !arr.length) return;
-    const now = new Date(); now.setHours(0,0,0,0);
-    const days=[]; for(let i=13;i>=0;i--){ const d=new Date(now); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+    // Both sides of this bucketing must be Budapest days. Building the day list
+    // from local midnight and then calling toISOString() yielded the *UTC* date
+    // of local midnight — one day early for the whole list — while commit dates
+    // were sliced as raw UTC, so the two never lined up.
+    const days=[]; for(let i=13;i>=0;i--) days.push(daysAgoISO(i));
     const c={}; days.forEach(d=>c[d]=0);
-    arr.forEach(it=>{ const a=it.commit&&it.commit.author&&it.commit.author.date; const cm=it.commit&&it.commit.committer&&it.commit.committer.date; const ds=(a||cm||'').slice(0,10); if(ds in c) c[ds]++; });
+    arr.forEach(it=>{ const a=it.commit&&it.commit.author&&it.commit.author.date; const cm=it.commit&&it.commit.committer&&it.commit.committer.date; const ts=a||cm; if(!ts) return; const ds=budDay(ts); if(ds in c) c[ds]++; });
     const data = days.map(d=>c[d]);
     const total = arr.length>=100 ? '100+' : arr.length;
     const streak = data.filter(v=>v>0).length;
@@ -111,25 +120,27 @@ export async function renderCalendar(){
   let rows = SEED_EVENTS;
   try { const { data, error } = await sb.from('events').select('*').order('start'); if(!error && data && data.length) rows = data; } catch(e){}
   if(!rows || !rows.length){ $('calList').innerHTML = '<div class="empty">No events</div>'; return; }
-  const today = new Date(); today.setHours(0,0,0,0);
+  const todayIdx = dayIndex(todayISO());
   const items = rows.map(ev=>{
-    const s = new Date(ev.start+'T00:00:00');
-    const e = new Date((ev.end||ev.start)+'T00:00:00');
-    const diff = Math.round((s-today)/86400000);
+    const s = new Date(ev.start+'T00:00:00Z');
+    const e = new Date((ev.end||ev.start)+'T00:00:00Z');
+    // Pure date arithmetic against the Budapest calendar day — no local midnight.
+    const diff = dayIndex(ev.start) - todayIdx;
+    const endIdx = dayIndex(ev.end||ev.start);
     let countTxt, soon=false;
     if(diff>0){ countTxt='in '+diff+'d'; if(diff<=21) soon=true; }
     else if(diff===0){ countTxt='today'; soon=true; }
-    else if(s<=today && e>=today){ countTxt='live'; soon=true; }
+    else if(diff<=0 && endIdx>=todayIdx){ countTxt='live'; soon=true; }
     else { countTxt = Math.abs(diff)+'d ago'; }
-    const md = s.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    const ed = e.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const md = evDayFmt.format(s);
+    const ed = evDayFmt.format(e);
     const isInterval = ev.end && ev.end!==ev.start;
     const range = md + (isInterval ? ' – '+ed : '');
     // Date chip: for intervals show "DD.MM–DD.MM", else just the day + month
     const chipD = isInterval
-      ? `${s.getDate()}.${String(s.getMonth()+1).padStart(2,'0')}–${e.getDate()}.${String(e.getMonth()+1).padStart(2,'0')}`
-      : String(s.getDate()).padStart(2,'0');
-    const chipM = isInterval ? `${String(s.getMonth()+1).padStart(2,'0')}–${String(e.getMonth()+1).padStart(2,'0')}` : s.toLocaleDateString('en-GB',{month:'short'});
+      ? `${s.getUTCDate()}.${String(s.getUTCMonth()+1).padStart(2,'0')}–${e.getUTCDate()}.${String(e.getUTCMonth()+1).padStart(2,'0')}`
+      : String(s.getUTCDate()).padStart(2,'0');
+    const chipM = isInterval ? `${String(s.getUTCMonth()+1).padStart(2,'0')}–${String(e.getUTCMonth()+1).padStart(2,'0')}` : evMonthFmt.format(s);
     return `<div class="cal${isInterval?' cal-int':''}"><div class="cal-date"><div class="cal-d">${chipD}</div>
       <div class="cal-m">${chipM}</div></div>
       <div class="cal-body"><div class="cal-title">${ev.title}</div>

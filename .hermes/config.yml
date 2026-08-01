@@ -4,19 +4,34 @@
 
 # Stack: vanilla-js-spa (detected by /hermes-init)
 
+# Gates are run by `hermes-gates`, which executes each one in this directory and
+# reports the real exit code. They are not advisory text.
+#
+# History worth keeping: `build` and `lint` used to be `node --check js/*.js`,
+# which silently checked only js/app.js — node --check reads one file and
+# ignores the rest of argv. `test` was `... && false`, a gate that could never
+# pass, so every run that claimed "gates green" had quietly skipped it.
 gates:
-  build:  node --check js/*.js
-  test:   'echo ''FATAL: no test suite configured — update gates in .hermes/config.yml'' && false'
-  lint:   node --check js/*.js
-  smoke:  |
-    python3 -c "
-    import re
-    with open('index.html') as f: h = f.read()
-    assert len(re.findall(r'<section\b', h)) == len(re.findall(r'</section>', h)) == 6, 'section mismatch'
-    for fn in ['js/app.js','js/auth.js','js/nav.js','js/dashboard.js','js/quicklog.js','js/charts.js','js/history.js','js/cards.js','js/utils.js','js/config.js']:
-        with open(fn) as f: pass
-    print('OK')
-    "
+  # One file per invocation, because node --check ignores extra arguments.
+  build: |
+    find js scripts tests \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
+  # Run twice. The bugs this suite exists to catch are timezone bugs, and they
+  # are all invisible when the host clock is set to Europe/Budapest.
+  test: |
+    TZ=UTC node --test tests/*.test.mjs && TZ=America/Los_Angeles node --test tests/*.test.mjs
+  # Enforces the Budapest-bucketing rule that AGENTS.md states and that three
+  # modules had drifted away from.
+  lint: |
+    node scripts/check-tz.mjs
+  # Structural: section count, asset/module resolution, every drawn chart has a
+  # canvas, every named import is really exported.
+  smoke: |
+    node scripts/smoke.mjs
+  # The knowledge graph must still describe the code. Structural drift only —
+  # the commit stamp moves every commit and gating on it would train everyone
+  # to ignore a permanently-red gate.
+  graph: |
+    python3 .understand-anything/gen_graph.py --check
 
 do_not_touch:
   - AGENTS.md

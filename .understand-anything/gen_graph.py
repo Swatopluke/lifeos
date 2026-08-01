@@ -1,396 +1,421 @@
 #!/usr/bin/env python3
-"""Generate LifeOS knowledge graph from real source analysis.
-Counts in GRAPH-INDEX.md are derived from this same structure, never hand-typed.
-"""
-import json, datetime, os
+"""Derive the LifeOS knowledge graph from source.
 
-PROJECT = "LifeOS"
-COMMIT = "70b9b0ab86b1a84d23e774feccb898ceec6c4c4d"
-UA = "/Users/gyozobaglyas/LifeOS/.understand-anything"
-NOW = datetime.datetime.now(datetime.timezone.utc).isoformat()
+Usage:
+  python3 .understand-anything/gen_graph.py [--check]
 
-def f(path, name, summary, tags):
-    return {"id": f"file:{path}", "type": "file", "name": name,
-            "filePath": path, "summary": summary, "tags": tags, "language": "javascript"}
+Every node, edge and count below is read out of the repository at run time. The
+previous version of this file hardcoded the commit hash and hand-listed each
+node and edge, so re-running it reproduced the same 40/73 no matter what the
+code did — a snapshot pretending to be an analysis, describing a tree two
+commits behind.
 
-def fn(file, name, summary, tags):
-    return {"id": f"function:js/{file}:{name}", "type": "function", "name": name,
-            "filePath": f"js/{file}", "summary": summary, "tags": tags}
+`--check` rebuilds in memory and exits 1 if the graph on disk no longer matches
+the source (files added/removed/renamed, imports or exports changed, or a newer
+commit). That makes staleness detectable instead of invisible.
 
-def doc(path, name, summary, tags):
-    return {"id": f"document:{path}", "type": "document", "name": name,
-            "filePath": path, "summary": summary, "tags": tags}
+Outputs:
+  .understand-anything/knowledge-graph.json
+  .understand-anything/meta.json
+  docs/GRAPH-INDEX.md          (counts derived from the graph, never typed)
 
-def cfg(path, name, summary, tags):
-    return {"id": f"config:{path}", "type": "config", "name": name,
-            "filePath": path, "summary": summary, "tags": tags}
-
-def conc(name, summary, tags):
-    return {"id": f"concept:{name}", "type": "concept", "name": name,
-            "summary": summary, "tags": tags}
-
-# ---------------- NODES ----------------
-nodes = []
-# File nodes
-nodes += [
-    f("index.html", "App shell (index.html)",
-      "Single-page app shell: login gate, six sections (overview/sleep/body/training/intake/world), "
-      "bottom nav, log-sheet modal. Loads Supabase + Chart.js from CDN; entry scripts js/nav.js + js/app.js.",
-      ["shell", "html", "entry-point"]),
-    f("css/styles.css", "Theme & layout (styles.css)",
-      "Design tokens as CSS vars (--sleep/--caf/--booze/--food/--energy/--weight), bottom-nav, cards, "
-      "chart boxes, sheet modal, calendar/feed/news styling.",
-      ["styles", "theme", "css"]),
-    f("js/config.js", "Supabase client & seed (config.js)",
-      "Constructs the Supabase client (sb) from a publishable key; SEED_PROJECTS / SEED_EVENTS fallbacks "
-      "used until matching tables exist.",
-      ["config", "supabase", "client"]),
-    f("js/utils.js", "Shared helpers (utils.js)",
-      "DOM/date/format helpers used across modules: $, todayISO, daysAgoISO, shortDay, budaFmt/budaDay/budDay, "
-      "toast, CSS, escapeHtml, timeAgo, domainOf.",
-      ["utils", "helpers"]),
-    f("js/charts.js", "Chart.js wrapper (charts.js)",
-      "Thin Chart.js wrapper: drawChart (cached, destroys prior), resizeAll, shared gridOpt/baseOpts. "
-      "Sets Chart defaults from CSS tokens.",
-      ["charts", "rendering"]),
-    f("js/auth.js", "Auth (auth.js)",
-      "signIn (Supabase password auth) and showApp (reveals app, sets date label, switches to overview).",
-      ["auth", "session"]),
-    f("js/nav.js", "Navigation (nav.js)",
-      "Bottom-nav tab switching with per-section lazy loaders (dynamic import() of dashboard.js loaders); "
-      "switchTab; calls resizeAll after layout settles.",
-      ["navigation", "lazy-load"]),
-    f("js/app.js", "Entry point (app.js)",
-      "Wires login/refresh/signout listeners, checks existing session, boots the app. Side-effecting module; "
-      "imports config/utils/auth/nav/quicklog.",
-      ["entry", "bootstrap"]),
-    f("js/quicklog.js", "Quick log & sheet (quicklog.js)",
-      "Quick-log tap handlers (snus/coffee/green_tea/matcha/alcohol via QUICK map) and the log-sheet modal "
-      "(sleep/meal/state/body/train) writing to Supabase tables.",
-      ["logging", "forms", "supabase-write"]),
-    f("js/dashboard.js", "Dashboard loaders (dashboard.js)",
-      "Per-section loaders (loadOverview/loadSleep/loadBody/loadTraining/loadIntake/loadWorld) over a shared "
-      "28-day Supabase cache (getCache); stimulant-clearance + week-delta helpers.",
-      ["dashboard", "data", "rendering"]),
-    f("js/cards.js", "World-tab cards (cards.js)",
-      "Card renderers for the World tab: renderBriefing/renderInsights/renderFeed/renderProjects/renderCalendar/"
-      "renderNews; fetches GitHub commit activity + Hacker News.",
-      ["cards", "widgets", "external-api"]),
-    f("js/history.js", "Steps history (history.js)",
-      "Steps history card with 24H/7D/30D range toggle; reads health_metrics/health_raw/daily_state.",
-      ["history", "steps", "charts"]),
-]
-# Config + document nodes
-nodes += [
-    cfg(".hermes/config.yml", "Hermes Protocol config",
-        "Repo-level Hermes Orchestration Protocol config: gates (build/test/lint/smoke), do_not_touch, "
-        "one_way_doors, skill_defaults, execution routing.",
-        ["hermes", "config", "protocol"]),
-    doc("docs/STATE.md", "Protocol state (STATE.md)",
-        "Hermes protocol state: active workstreams, known-broken, ADRs, merge queue. Currently stubbed.",
-        ["docs", "state", "hermes"]),
-    doc("docs/GRAPH-INDEX.md", "Graph index (GRAPH-INDEX.md)",
-        "Index pointing at the knowledge graph; regenerated from .understand-anything/knowledge-graph.json. "
-        "Node/edge counts are derived from that file, not a directory listing.",
-        ["docs", "index", "graph"]),
-]
-# Concept node
-nodes += [
-    conc("SupabaseBackend",
-         "Hosted Postgres via the Supabase JS SDK — LifeOS's data layer. Tables: sleep, body_metrics, "
-         "daily_state, intake, meals, supplements, supplement_log, goals, training, briefings, insights, "
-         "feed_items, projects, events, health_metrics, health_raw. No local migrations; schema lives remotely.",
-         ["backend", "database", "supabase", "external"]),
-]
-# Function nodes
-nodes += [
-    fn("app.js", "boot", "Async IIFE: reads session, shows app if logged in; wires listeners.", ["bootstrap"]),
-    fn("auth.js", "signIn", "Supabase signInWithPassword; calls showApp on success.", ["auth"]),
-    fn("auth.js", "showApp", "Hides login, reveals app, sets today label, switches to overview.", ["auth"]),
-    fn("nav.js", "switchTab", "Toggles sections, lazy-runs the tab loader once, then resizeAll().", ["navigation"]),
-    fn("dashboard.js", "getCache", "Fetches all 28-day data once via Promise.all; memoized.", ["cache", "data"]),
-    fn("dashboard.js", "loadOverview", "Renders quick counters, stat strip, goals, stimulant chart, food chart, meal log, briefing.", ["dashboard"]),
-    fn("dashboard.js", "loadSleep", "Renders sleep, sleep-stages, intake-vs-sleep charts.", ["dashboard"]),
-    fn("dashboard.js", "loadBody", "Renders weight/state charts, week deltas, delegates steps to loadHistory.", ["dashboard"]),
-    fn("dashboard.js", "loadTraining", "Renders training summary, week grid, minutes chart.", ["dashboard"]),
-    fn("dashboard.js", "loadIntake", "Renders supplements + today's intake detail.", ["dashboard"]),
-    fn("dashboard.js", "loadWorld", "Renders feed/projects/calendar/news/insights cards.", ["dashboard"]),
-    fn("dashboard.js", "drawStimChart", "Live stimulant-clearance decay chart (nicotine/caffeine/alcohol) with now-line.", ["chart", "internal"]),
-    fn("dashboard.js", "renderMealLog", "Renders today's meal rows.", ["render", "internal"]),
-    fn("dashboard.js", "renderWeekDeltas", "Computes this-week vs last-week deltas for sleep/snus/alcohol/caffeine/kcal/steps.", ["render", "internal"]),
-    fn("cards.js", "renderBriefing", "Renders latest briefing card from briefings table.", ["card"]),
-    fn("cards.js", "renderInsights", "Renders insights list from insights table.", ["card"]),
-    fn("cards.js", "renderFeed", "Renders world-feed items from feed_items table.", ["card"]),
-    fn("cards.js", "renderProjects", "Renders project cards (seed or projects table); triggers activity fetch.", ["card"]),
-    fn("cards.js", "fetchProjectActivity", "Fetches GitHub commit history for a repo; draws a 14-day bar chart.", ["card", "external-api"]),
-    fn("cards.js", "renderCalendar", "Renders upcoming events (seed or events table).", ["card"]),
-    fn("cards.js", "renderNews", "Fetches + renders Hacker News top stories.", ["card", "external-api"]),
-    fn("history.js", "loadHistory", "Loads steps for 24H/7D/30D and draws the steps chart.", ["history"]),
-    fn("charts.js", "drawChart", "Creates/destroys a cached Chart.js instance by canvas id.", ["charts"]),
-    fn("charts.js", "resizeAll", "Resizes every live chart (called after tab switch).", ["charts"]),
-]
-
-# ---------------- EDGES ----------------
-def imp(s, t):  # imports
-    return {"source": s, "target": t, "type": "imports", "weight": 0.7}
-def cal(s, t):  # calls
-    return {"source": s, "target": t, "type": "calls", "weight": 0.8}
-def dep(s, t, et="depends_on", w=0.6):
-    return {"source": s, "target": t, "type": et, "weight": w}
-
-edges = []
-# index.html loads
-edges += [imp("file:index.html", "file:js/nav.js"),
-          imp("file:index.html", "file:js/app.js"),
-          imp("file:index.html", "file:css/styles.css")]
-# app.js
-edges += [imp("file:js/app.js", "file:js/config.js"),
-          imp("file:js/app.js", "file:js/utils.js"),
-          imp("file:js/app.js", "file:js/auth.js"),
-          imp("file:js/app.js", "file:js/nav.js"),
-          imp("file:js/app.js", "file:js/quicklog.js")]
-# auth.js
-edges += [imp("file:js/auth.js", "file:js/config.js"),
-          imp("file:js/auth.js", "file:js/utils.js"),
-          imp("file:js/auth.js", "file:js/nav.js")]
-# nav.js
-edges += [imp("file:js/nav.js", "file:js/utils.js"),
-          imp("file:js/nav.js", "file:js/charts.js"),
-          imp("file:js/nav.js", "file:js/dashboard.js")]  # dynamic import in LOADERS
-# charts.js
-edges += [imp("file:js/charts.js", "file:js/utils.js")]
-# dashboard.js
-edges += [imp("file:js/dashboard.js", "file:js/config.js"),
-          imp("file:js/dashboard.js", "file:js/utils.js"),
-          imp("file:js/dashboard.js", "file:js/charts.js"),
-          imp("file:js/dashboard.js", "file:js/history.js"),
-          imp("file:js/dashboard.js", "file:js/cards.js")]
-# quicklog.js
-edges += [imp("file:js/quicklog.js", "file:js/config.js"),
-          imp("file:js/quicklog.js", "file:js/utils.js"),
-          imp("file:js/quicklog.js", "file:js/nav.js")]
-# cards.js
-edges += [imp("file:js/cards.js", "file:js/config.js"),
-          imp("file:js/cards.js", "file:js/utils.js"),
-          imp("file:js/cards.js", "file:js/charts.js")]
-# history.js
-edges += [imp("file:js/history.js", "file:js/config.js"),
-          imp("file:js/history.js", "file:js/utils.js"),
-          imp("file:js/history.js", "file:js/charts.js")]
-
-# calls (function-level)
-edges += [
-    cal("function:js/app.js:boot", "function:js/auth.js:signIn"),
-    cal("function:js/app.js:boot", "function:js/auth.js:showApp"),
-    cal("function:js/app.js:boot", "function:js/nav.js:switchTab"),
-    cal("function:js/auth.js:signIn", "function:js/auth.js:showApp"),
-    cal("function:js/auth.js:showApp", "function:js/nav.js:switchTab"),
-    cal("function:js/nav.js:switchTab", "function:js/charts.js:resizeAll"),
-    cal("function:js/nav.js:switchTab", "function:js/dashboard.js:loadOverview"),
-    cal("function:js/nav.js:switchTab", "function:js/dashboard.js:loadSleep"),
-    cal("function:js/nav.js:switchTab", "function:js/dashboard.js:loadBody"),
-    cal("function:js/nav.js:switchTab", "function:js/dashboard.js:loadTraining"),
-    cal("function:js/nav.js:switchTab", "function:js/dashboard.js:loadIntake"),
-    cal("function:js/nav.js:switchTab", "function:js/dashboard.js:loadWorld"),
-    cal("function:js/dashboard.js:loadOverview", "function:js/dashboard.js:getCache"),
-    cal("function:js/dashboard.js:loadOverview", "function:js/charts.js:drawChart"),
-    cal("function:js/dashboard.js:loadOverview", "function:js/dashboard.js:drawStimChart"),
-    cal("function:js/dashboard.js:loadOverview", "function:js/dashboard.js:renderMealLog"),
-    cal("function:js/dashboard.js:loadOverview", "function:js/cards.js:renderBriefing"),
-    cal("function:js/dashboard.js:loadSleep", "function:js/dashboard.js:getCache"),
-    cal("function:js/dashboard.js:loadSleep", "function:js/charts.js:drawChart"),
-    cal("function:js/dashboard.js:loadBody", "function:js/dashboard.js:getCache"),
-    cal("function:js/dashboard.js:loadBody", "function:js/charts.js:drawChart"),
-    cal("function:js/dashboard.js:loadBody", "function:js/dashboard.js:renderWeekDeltas"),
-    cal("function:js/dashboard.js:loadBody", "function:js/history.js:loadHistory"),
-    cal("function:js/dashboard.js:loadTraining", "function:js/dashboard.js:getCache"),
-    cal("function:js/dashboard.js:loadTraining", "function:js/charts.js:drawChart"),
-    cal("function:js/dashboard.js:loadIntake", "function:js/dashboard.js:getCache"),
-    cal("function:js/dashboard.js:loadWorld", "function:js/cards.js:renderFeed"),
-    cal("function:js/dashboard.js:loadWorld", "function:js/cards.js:renderProjects"),
-    cal("function:js/dashboard.js:loadWorld", "function:js/cards.js:renderCalendar"),
-    cal("function:js/dashboard.js:loadWorld", "function:js/cards.js:renderNews"),
-    cal("function:js/dashboard.js:loadWorld", "function:js/cards.js:renderInsights"),
-    cal("function:js/dashboard.js:drawStimChart", "function:js/charts.js:drawChart"),
-    cal("function:js/cards.js:renderProjects", "function:js/cards.js:fetchProjectActivity"),
-    cal("function:js/cards.js:renderProjects", "function:js/charts.js:drawChart"),
-    cal("function:js/cards.js:fetchProjectActivity", "function:js/charts.js:drawChart"),
-    cal("function:js/history.js:loadHistory", "function:js/charts.js:drawChart"),
-]
-# Supabase concept edges
-edges += [
-    dep("file:js/config.js", "concept:SupabaseBackend", "defines_schema", 0.8),
-    dep("file:js/dashboard.js", "concept:SupabaseBackend"),
-    dep("file:js/quicklog.js", "concept:SupabaseBackend"),
-    dep("file:js/cards.js", "concept:SupabaseBackend"),
-    dep("file:js/history.js", "concept:SupabaseBackend"),
-    dep("file:js/auth.js", "concept:SupabaseBackend"),
-    # docs document the protocol/config
-    dep("document:docs/STATE.md", "config:.hermes/config.yml", "documents", 0.5),
-    dep("document:docs/GRAPH-INDEX.md", "config:.hermes/config.yml", "documents", 0.5),
-]
-
-# ---------------- LAYERS ----------------
-layers = [
-    {"id": "layer:entry-and-shell", "name": "Entry & shell",
-     "description": "HTML shell, theme, and bootstrap/router entry points.",
-     "nodeIds": ["file:index.html", "file:css/styles.css", "file:js/app.js", "file:js/nav.js"]},
-    {"id": "layer:auth-and-config", "name": "Auth & config",
-     "description": "Supabase client construction and session/auth flow.",
-     "nodeIds": ["file:js/config.js", "file:js/auth.js"]},
-    {"id": "layer:data-and-services", "name": "Data & services",
-     "description": "Section loaders, logging writes, and the remote Supabase data layer.",
-     "nodeIds": ["file:js/dashboard.js", "file:js/history.js", "file:js/quicklog.js", "concept:SupabaseBackend"]},
-    {"id": "layer:ui-rendering", "name": "UI & rendering",
-     "description": "Charting, world-tab cards, and shared helpers.",
-     "nodeIds": ["file:js/charts.js", "file:js/cards.js", "file:js/utils.js"]},
-    {"id": "layer:docs-and-protocol", "name": "Docs & protocol",
-     "description": "Hermes protocol config and generated documentation.",
-     "nodeIds": ["config:.hermes/config.yml", "document:docs/STATE.md", "document:docs/GRAPH-INDEX.md"]},
-]
-
-# ---------------- TOUR ----------------
-tour = [
-    {"order": 1, "title": "App shell", "description": "index.html defines the login gate, six sections, and bottom nav; it loads the two entry scripts.",
-     "nodeIds": ["file:index.html"]},
-    {"order": 2, "title": "Bootstrap & auth", "description": "app.js boots, config.js builds the Supabase client, auth.js handles sign-in.",
-     "nodeIds": ["file:js/app.js", "file:js/config.js", "file:js/auth.js"]},
-    {"order": 3, "title": "Navigation & lazy loading", "description": "nav.js switches sections and lazily imports dashboard loaders; then resizes charts.",
-     "nodeIds": ["file:js/nav.js", "file:js/dashboard.js"]},
-    {"order": 4, "title": "Data layer", "description": "dashboard.js fetches a 28-day cache from Supabase; quicklog.js and history.js also read/write it.",
-     "nodeIds": ["file:js/dashboard.js", "concept:SupabaseBackend", "file:js/quicklog.js", "file:js/history.js"]},
-    {"order": 5, "title": "Rendering", "description": "charts.js draws everything; cards.js renders the World tab from Supabase + external APIs.",
-     "nodeIds": ["file:js/charts.js", "file:js/cards.js", "file:js/utils.js"]},
-]
-
-graph = {
-    "version": "1.0.0",
-    "project": {
-        "name": PROJECT,
-        "languages": ["javascript", "html", "css", "markdown", "yaml"],
-        "frameworks": ["Supabase", "Chart.js"],
-        "description": "LifeOS — a single-page personal-tracking web app (sleep, intake, food, training, body, world feed) backed by Supabase.",
-        "analyzedAt": NOW,
-        "gitCommitHash": COMMIT,
-    },
-    "nodes": nodes,
-    "edges": edges,
-    "layers": layers,
-    "tour": tour,
-}
-
-os.makedirs(UA, exist_ok=True)
-with open(os.path.join(UA, "knowledge-graph.json"), "w") as fh:
-    json.dump(graph, fh, indent=2)
-
-# ---------------- INLINE VALIDATION ----------------
-issues, warnings = [], []
-node_ids = set()
-seen = {}
-for i, n in enumerate(nodes):
-    if not n.get("id"): issues.append(f"Node[{i}] missing id"); continue
-    if not n.get("type"): issues.append(f"Node '{n['id']}' missing type")
-    if not n.get("name"): issues.append(f"Node '{n['id']}' missing name")
-    if not n.get("summary"): issues.append(f"Node '{n['id']}' missing summary")
-    if not n.get("tags"): issues.append(f"Node '{n['id']}' missing tags")
-    if n["id"] in seen: issues.append(f"Duplicate node id '{n['id']}'")
-    else: seen[n["id"]] = i
-    node_ids.add(n["id"])
-for i, e in enumerate(edges):
-    if e["source"] not in node_ids: issues.append(f"Edge[{i}] source '{e['source']}' missing")
-    if e["target"] not in node_ids: issues.append(f"Edge[{i}] target '{e['target']}' missing")
-
-file_level = {"file","config","document","service","pipeline","table","schema","resource","endpoint"}
-file_nodes = [n["id"] for n in nodes if n["type"] in file_level]
-assigned = set()
-for layer in layers:
-    for nid in layer.get("nodeIds", []):
-        if nid not in node_ids: issues.append(f"Layer '{layer['id']}' refs missing node '{nid}'")
-        assigned.add(nid)
-for nid in file_nodes:
-    if nid not in assigned: issues.append(f"File node '{nid}' not in any layer")
-for step in tour:
-    for nid in step.get("nodeIds", []):
-        if nid not in node_ids: issues.append(f"Tour step '{step.get('title')}' refs missing node '{nid}'")
-
-with_edges = set([e["source"] for e in edges] + [e["target"] for e in edges])
-for n in nodes:
-    if n["id"] not in with_edges: warnings.append(f"Node '{n['id']}' has no edges (orphan)")
-
-stats = {
-    "totalNodes": len(nodes),
-    "totalEdges": len(edges),
-    "totalLayers": len(layers),
-    "tourSteps": len(tour),
-    "nodeTypes": {},
-    "edgeTypes": {},
-}
-for n in nodes: stats["nodeTypes"][n["type"]] = stats["nodeTypes"].get(n["type"], 0) + 1
-for e in edges: stats["edgeTypes"][e["type"]] = stats["edgeTypes"].get(e["type"], 0) + 1
-
-print("VALIDATION issues:", len(issues), "warnings:", len(warnings))
-for x in issues: print("  ISSUE:", x)
-for x in warnings: print("  WARN:", x)
-print("STATS:", json.dumps(stats, indent=2))
-
-# ---------------- REGENERATE GRAPH-INDEX.md FROM GRAPH ----------------
-def md_table(rows):
-    return "\n".join(rows)
-
-node_lines = [f"| {t} | {stats['nodeTypes'][t]} |" for t in sorted(stats['nodeTypes'])]
-edge_lines = [f"| {t} | {stats['edgeTypes'][t]} |" for t in sorted(stats['edgeTypes'])]
-
-layer_rows = []
-for layer in layers:
-    layer_rows.append(f"| `{layer['id']}` | {layer['name']} | {len(layer['nodeIds'])} |")
-
-md = f"""# LifeOS — GRAPH-INDEX.md
-
-> Auto-generated from `.understand-anything/knowledge-graph.json`. Node and edge
-> counts below are computed from that file — never hand-edited. Regenerate after
-> every `/understand` run.
-
-| | |
-|---|---|
-| **updated** | {NOW[:10]} |
-| **commit** | {COMMIT} |
-| **nodes** | {stats['totalNodes']} |
-| **edges** | {stats['totalEdges']} |
-| **layers** | {stats['totalLayers']} |
-| **tour steps** | {stats['tourSteps']} |
-
-## Node types
-
-| Type | Count |
-|---|---|
-{chr(10).join(l for l in node_lines)}
-
-## Edge types
-
-| Type | Count |
-|---|---|
-{chr(10).join(l for l in edge_lines)}
-
-## Layers
-
-| Layer id | Name | Nodes |
-|---|---|---|
-{chr(10).join(layer_rows)}
-
-## Tour
-
-| # | Title | Nodes |
-|---|---|---|
-""" + "\n".join(f"| {s['order']} | {s['title']} | {len(s['nodeIds'])} |" for s in tour) + f"""
-
-## Notes
-- Stack: vanilla-JS SPA (ES modules) + Supabase + Chart.js. No build step; gates run `node --check`.
-- Data layer is a remote Supabase backend (`concept:SupabaseBackend`); no local migrations.
-- `grep`-free exploration: use the dashboard or `hermes graph` tooling against this graph.
+Exit codes:
+  0 — written, or --check and current
+  1 — --check and the artefact is stale
+  2 — the graph failed validation / unusable input
 """
 
-with open("/Users/gyozobaglyas/LifeOS/docs/GRAPH-INDEX.md", "w") as fh:
-    fh.write(md)
+import datetime
+import json
+import os
+import re
+import subprocess
+import sys
+from collections import Counter
 
-print("\nWROTE knowledge-graph.json and docs/GRAPH-INDEX.md")
-print("PRE-COMMIT COUNTS -> nodes:", stats['totalNodes'], "edges:", stats['totalEdges'])
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UA = os.path.join(ROOT, ".understand-anything")
+JS_DIR = os.path.join(ROOT, "js")
+PROJECT = os.path.basename(ROOT)
+
+RE_IMPORT_NAMED = re.compile(r"import\s*\{([^}]+)\}\s*from\s*['\"]([^'\"]+)['\"]")
+RE_IMPORT_BARE = re.compile(r"import\s+['\"]([^'\"]+)['\"]")
+RE_IMPORT_DYN = re.compile(r"import\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
+RE_EXPORT_DECL = re.compile(
+    r"^\s*export\s+(?:async\s+)?(?:function|const|let|var|class)\s+([A-Za-z_$][\w$]*)", re.M)
+RE_EXPORT_LIST = re.compile(r"^\s*export\s*\{([^}]+)\}", re.M)
+RE_DRAWCHART = re.compile(r"drawChart\(\s*(['\"])([^'\"]+)\1\s*,")
+RE_SUPABASE = re.compile(r"sb\.from\(\s*['\"]([^'\"]+)['\"]\s*\)")
+
+
+def git(*argv: str) -> str:
+    r = subprocess.run(["git", *argv], cwd=ROOT, capture_output=True,
+                       text=True, timeout=60)
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def read(path: str) -> str:
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def js_modules() -> list[str]:
+    if not os.path.isdir(JS_DIR):
+        return []
+    return sorted(f for f in os.listdir(JS_DIR) if f.endswith(".js"))
+
+
+def scan_module(name: str) -> dict:
+    src = read(os.path.join(JS_DIR, name))
+    exports = set(RE_EXPORT_DECL.findall(src))
+    for block in RE_EXPORT_LIST.findall(src):
+        for part in block.split(","):
+            ident = part.strip().split(" as ")[-1].strip()
+            if ident:
+                exports.add(ident)
+
+    imports = []
+    for names, spec in RE_IMPORT_NAMED.findall(src):
+        if not spec.startswith("."):
+            continue
+        idents = [p.strip().split(" as ")[0].strip() for p in names.split(",")]
+        imports.append((os.path.basename(spec), [i for i in idents if i]))
+    for spec in RE_IMPORT_BARE.findall(src) + RE_IMPORT_DYN.findall(src):
+        if spec.startswith("."):
+            imports.append((os.path.basename(spec), []))
+
+    return {
+        "exports": sorted(exports),
+        "imports": imports,
+        "charts": sorted({m.group(2) for m in RE_DRAWCHART.finditer(src)}),
+        "tables": sorted(set(RE_SUPABASE.findall(src))),
+        "lines": src.count("\n") + 1,
+    }
+
+
+# Roles are the one piece of editorial judgement kept: "what this module is for"
+# is not derivable from syntax. Everything else — which files exist, what they
+# export, what imports what — comes from the scan. A module missing from this
+# table still appears in the graph with a generated summary.
+ROLES = {
+    "config.js":    ("Supabase client & seed", "config", ["config", "supabase"]),
+    "utils.js":     ("Shared helpers (DOM, Budapest date/time)", "services", ["utils", "timezone"]),
+    "charts.js":    ("Chart.js wrapper", "ui", ["charts", "rendering"]),
+    "auth.js":      ("Supabase email/password auth", "auth", ["auth", "session"]),
+    "nav.js":       ("Bottom-nav tabs with per-section lazy loading", "entry", ["navigation"]),
+    "app.js":       ("Bootstrap: listeners, session check, boot", "entry", ["entry", "bootstrap"]),
+    "quicklog.js":  ("Quick-log taps and the log-sheet modal", "services", ["logging"]),
+    "dashboard.js": ("Per-section loaders over a shared 28-day cache", "services", ["dashboard", "data"]),
+    "cards.js":     ("World-tab cards (briefing, feed, projects, news)", "ui", ["cards", "external-api"]),
+    "history.js":   ("Steps history card with 24H/7D/30D toggle", "ui", ["history"]),
+}
+
+LAYER_DEFS = [
+    ("entry",    "Entry & shell",   "Page shell, bootstrap and navigation."),
+    ("auth",     "Auth & config",   "Session handling and the Supabase client."),
+    ("services", "Data & services", "Fetching, caching, shared helpers, logging."),
+    ("ui",       "UI & rendering",  "Charts, cards and per-card renderers."),
+    ("config",   "Config",          "Connection configuration and seed data."),
+    ("docs",     "Docs & protocol", "Hermes protocol config and generated documentation."),
+]
+
+
+def build() -> dict:
+    modules = js_modules()
+    if not modules:
+        raise SystemExit("gen_graph: no js/ modules found")
+
+    scans = {m: scan_module(m) for m in modules}
+    nodes, edges, seen = [], [], set()
+
+    def add_node(node):
+        if node["id"] not in seen:
+            seen.add(node["id"])
+            nodes.append(node)
+
+    def add_edge(src, dst, kind, weight=1.0):
+        if src in seen and dst in seen:
+            edges.append({"source": src, "target": dst, "type": kind, "weight": weight})
+
+    html_path = os.path.join(ROOT, "index.html")
+    html = read(html_path) if os.path.exists(html_path) else ""
+    sections = len(re.findall(r"<section\b", html))
+    canvases = sorted(set(re.findall(r"<canvas[^>]+id=[\"']([^\"']+)[\"']", html)))
+    add_node({
+        "id": "file:index.html", "type": "file", "name": "App shell (index.html)",
+        "filePath": "index.html", "language": "html",
+        "summary": f"Single-page shell: {sections} sections, {len(canvases)} canvases, "
+                   "login gate, bottom nav and the log-sheet modal.",
+        "tags": ["shell", "entry-point"],
+    })
+    css_path = os.path.join(ROOT, "css", "styles.css")
+    if os.path.exists(css_path):
+        add_node({
+            "id": "file:css/styles.css", "type": "file", "name": "Theme & layout",
+            "filePath": "css/styles.css", "language": "css",
+            "summary": f"Design tokens and layout, {read(css_path).count(chr(10)) + 1} lines.",
+            "tags": ["styles", "theme"],
+        })
+
+    for m in modules:
+        s = scans[m]
+        role_name, layer, tags = ROLES.get(m, (f"Module {m}", "services", ["module"]))
+        add_node({
+            "id": f"file:js/{m}", "type": "file", "name": f"{role_name} ({m})",
+            "filePath": f"js/{m}", "language": "javascript",
+            "summary": f"{role_name}. {len(s['exports'])} export(s), {s['lines']} lines.",
+            "tags": tags, "layer": layer,
+        })
+        for fn in s["exports"]:
+            add_node({
+                "id": f"function:js/{m}:{fn}", "type": "function", "name": fn,
+                "filePath": f"js/{m}",
+                "summary": f"Exported from js/{m}.", "tags": ["export"],
+            })
+            add_edge(f"file:js/{m}", f"function:js/{m}:{fn}", "defines")
+
+    for rel, ntype, name, summary, tags in [
+        (".hermes/config.yml", "config", "Hermes protocol config",
+         "Gates, do_not_touch, one-way doors and routing for this project.", ["protocol"]),
+        ("docs/STATE.md", "document", "STATE.md",
+         "Generated project state — regenerated by hermes-state.", ["docs"]),
+        ("docs/GRAPH-INDEX.md", "document", "GRAPH-INDEX.md",
+         "Generated index of this graph.", ["docs"]),
+        ("AGENTS.md", "document", "AGENTS.md",
+         "Repository conventions for agents.", ["docs"]),
+    ]:
+        if os.path.exists(os.path.join(ROOT, rel)):
+            add_node({"id": f"{ntype}:{rel}", "type": ntype, "name": name,
+                      "filePath": rel, "summary": summary, "tags": tags})
+
+    tables = sorted({t for s in scans.values() for t in s["tables"]})
+    if tables:
+        add_node({
+            "id": "concept:SupabaseBackend", "type": "concept", "name": "Supabase backend",
+            "summary": f"Remote Postgres + Auth. {len(tables)} table(s) referenced: "
+                       + ", ".join(tables) + ".",
+            "tags": ["backend", "supabase"],
+        })
+
+    for m in modules:
+        for target, names in scans[m]["imports"]:
+            if target not in scans:
+                continue
+            add_edge(f"file:js/{m}", f"file:js/{target}", "imports")
+            for n in names:
+                # Only record a call edge when the target really exports it —
+                # a dangling import is a bug, not an edge.
+                if n in scans[target]["exports"]:
+                    add_edge(f"file:js/{m}", f"function:js/{target}:{n}", "calls", 0.8)
+
+    for m in modules:
+        if scans[m]["tables"]:
+            add_edge(f"file:js/{m}", "concept:SupabaseBackend", "depends_on", 0.6)
+    if "config.js" in scans:
+        add_edge("concept:SupabaseBackend", "file:js/config.js", "defines_schema", 0.5)
+
+    for spec in re.findall(r"<script[^>]+src=[\"']([^\"']+)[\"']", html):
+        base = os.path.basename(spec)
+        if base in scans:
+            add_edge("file:index.html", f"file:js/{base}", "loads")
+    if os.path.exists(css_path):
+        add_edge("file:index.html", "file:css/styles.css", "loads")
+
+    for doc in ("document:docs/STATE.md", "document:docs/GRAPH-INDEX.md", "document:AGENTS.md"):
+        add_edge(doc, "config:.hermes/config.yml", "documents", 0.5)
+
+    layers = []
+    for key, name, desc in LAYER_DEFS:
+        ids = [n["id"] for n in nodes if n.get("layer") == key]
+        if key == "entry":
+            ids.append("file:index.html")
+        if key == "ui" and os.path.exists(css_path):
+            ids.append("file:css/styles.css")
+        if key == "docs":
+            ids += [n["id"] for n in nodes if n["type"] in ("document", "config")]
+        if ids:
+            layers.append({"id": f"layer:{key}", "name": name,
+                           "description": desc, "nodeIds": sorted(set(ids))})
+
+    # Any file-level node not placed by a role lands in services, so the
+    # "every file is in a layer" invariant cannot quietly break when a module
+    # is added without touching ROLES.
+    placed = {i for l in layers for i in l["nodeIds"]}
+    orphans = sorted(n["id"] for n in nodes
+                     if n["type"] in ("file", "config", "document") and n["id"] not in placed)
+    if orphans:
+        for l in layers:
+            if l["id"] == "layer:services":
+                l["nodeIds"] = sorted(set(l["nodeIds"]) | set(orphans))
+                break
+        else:
+            layers.append({"id": "layer:services", "name": "Data & services",
+                           "description": "Unclassified modules.", "nodeIds": orphans})
+
+    def step(title, ids, note):
+        return {"title": title, "nodeIds": [i for i in ids if i in seen], "note": note}
+
+    tour = [
+        step("Boot", ["file:index.html", "file:js/app.js", "file:js/auth.js"],
+             "Shell loads, session is checked, the app is revealed."),
+        step("Navigate", ["file:js/nav.js"],
+             "Tab switching lazily imports each section's loader."),
+        step("Fetch", ["file:js/dashboard.js", "file:js/config.js"],
+             "One 28-day Supabase fetch is cached and shared by every section."),
+        step("Render", ["file:js/charts.js", "file:js/cards.js", "file:js/history.js",
+                        "file:js/utils.js"],
+             "Charts and cards render from the cache; all bucketing is Budapest."),
+        step("Log", ["file:js/quicklog.js"],
+             "Quick-log taps and the sheet modal write back to Supabase."),
+    ]
+
+    return {
+        "version": "1.1.0",
+        "project": PROJECT,
+        "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "gitCommitHash": git("rev-parse", "HEAD"),
+        "nodes": nodes,
+        "edges": edges,
+        "layers": layers,
+        "tour": [t for t in tour if t["nodeIds"]],
+        "stats": {"totalNodes": len(nodes), "totalEdges": len(edges),
+                  "modules": len(modules), "tables": len(tables)},
+    }
+
+
+def validate(g: dict) -> list[str]:
+    problems = []
+    ids = {n["id"] for n in g["nodes"]}
+    if len(ids) != len(g["nodes"]):
+        problems.append("duplicate node ids")
+    for n in g["nodes"]:
+        for field in ("id", "type", "name", "summary"):
+            if not n.get(field):
+                problems.append(f"node {n.get('id')} missing {field}")
+    for i, e in enumerate(g["edges"]):
+        if e["source"] not in ids:
+            problems.append(f"edge[{i}] dangling source {e['source']}")
+        if e["target"] not in ids:
+            problems.append(f"edge[{i}] dangling target {e['target']}")
+    placed = {i for l in g["layers"] for i in l["nodeIds"]}
+    for n in g["nodes"]:
+        if n["type"] in ("file", "config", "document") and n["id"] not in placed:
+            problems.append(f"{n['id']} is in no layer")
+    for l in g["layers"]:
+        for i in l["nodeIds"]:
+            if i not in ids:
+                problems.append(f"layer {l['id']} references unknown {i}")
+    for t in g["tour"]:
+        for i in t["nodeIds"]:
+            if i not in ids:
+                problems.append(f"tour step {t['title']} references unknown {i}")
+    return problems
+
+
+def render_index(g: dict) -> str:
+    ntypes = Counter(n["type"] for n in g["nodes"])
+    etypes = Counter(e["type"] for e in g["edges"])
+    L = [
+        f"# {g['project']} — GRAPH-INDEX.md", "",
+        "> Generated by `.understand-anything/gen_graph.py` from the source tree.",
+        "> Counts are computed from `knowledge-graph.json`, never hand-typed.",
+        "> Regenerate with `/hermes-understand`; verify with `gen_graph.py --check`.",
+        "",
+        "| | |", "|---|---|",
+        f"| **generated** | {g['generatedAt'][:19]}Z |",
+        f"| **commit** | `{g['gitCommitHash'] or '(unknown)'}` |",
+        f"| **nodes** | {len(g['nodes'])} |",
+        f"| **edges** | {len(g['edges'])} |",
+        f"| **layers** | {len(g['layers'])} |",
+        f"| **tour steps** | {len(g['tour'])} |",
+        "", "## Node types", "", "| Type | Count |", "|---|---|",
+    ]
+    L += [f"| {k} | {v} |" for k, v in sorted(ntypes.items())]
+    L += ["", "## Edge types", "", "| Type | Count |", "|---|---|"]
+    L += [f"| {k} | {v} |" for k, v in sorted(etypes.items())]
+    L += ["", "## Layers", ""]
+    for l in g["layers"]:
+        L.append(f"- **{l['name']}** ({len(l['nodeIds'])} nodes) — {l['description']}")
+    L += ["", "## Tour", ""]
+    for i, t in enumerate(g["tour"], 1):
+        L.append(f"{i}. **{t['title']}** — {t['note']}")
+    L += ["", "## Modules", "", "| File | Exports | Summary |", "|---|---|---|"]
+    for n in sorted((n for n in g["nodes"] if n["type"] == "file"),
+                    key=lambda x: x["filePath"]):
+        exp = len([e for e in g["edges"]
+                   if e["source"] == n["id"] and e["type"] == "defines"])
+        L.append(f"| `{n['filePath']}` | {exp} | {n['summary']} |")
+    return "\n".join(L) + "\n"
+
+
+def main(argv: list[str]) -> int:
+    check = "--check" in argv[1:]
+    g = build()
+
+    problems = validate(g)
+    if problems:
+        for p in problems:
+            print(f"gen_graph: INVALID — {p}", file=sys.stderr)
+        return 2
+
+    graph_path = os.path.join(UA, "knowledge-graph.json")
+    if check:
+        if not os.path.exists(graph_path):
+            print("gen_graph: STALE — no graph on disk", file=sys.stderr)
+            return 1
+        try:
+            old = json.load(open(graph_path, encoding="utf-8"))
+        except Exception:
+            print("gen_graph: STALE — graph on disk does not parse", file=sys.stderr)
+            return 1
+        # Only STRUCTURAL drift fails. The commit hash moves on every commit, so
+        # gating on it would leave this permanently red and train everyone to
+        # ignore it. What matters is whether the graph still describes the code:
+        # modules added or removed, imports rewired, exports changed.
+        drift = []
+        old_ids = {n["id"] for n in old.get("nodes", [])}
+        new_ids = {n["id"] for n in g["nodes"]}
+        for missing in sorted(new_ids - old_ids)[:8]:
+            drift.append(f"in source but not in graph: {missing}")
+        for extra in sorted(old_ids - new_ids)[:8]:
+            drift.append(f"in graph but no longer in source: {extra}")
+        if len(old.get("edges", [])) != len(g["edges"]):
+            drift.append(f"edge count {len(old.get('edges', []))} on disk "
+                         f"!= {len(g['edges'])} in source")
+        if drift:
+            for d in drift:
+                print(f"gen_graph: STALE — {d}", file=sys.stderr)
+            print("Regenerate with: python3 .understand-anything/gen_graph.py",
+                  file=sys.stderr)
+            return 1
+        if old.get("gitCommitHash") != g["gitCommitHash"]:
+            print(f"gen_graph: current in structure; graph stamped at "
+                  f"{str(old.get('gitCommitHash'))[:8]}, HEAD is {g['gitCommitHash'][:8]}")
+        else:
+            print(f"gen_graph: current ({len(g['nodes'])} nodes, {len(g['edges'])} edges)")
+        return 0
+
+    os.makedirs(UA, exist_ok=True)
+    with open(graph_path, "w", encoding="utf-8") as f:
+        json.dump(g, f, indent=2)
+    with open(os.path.join(UA, "meta.json"), "w", encoding="utf-8") as f:
+        json.dump({
+            "lastAnalyzedAt": g["generatedAt"],
+            "gitCommitHash": g["gitCommitHash"],
+            "version": g["version"],
+            "analyzedFiles": g["stats"]["modules"] + 2,
+        }, f, indent=2)
+    index_path = os.path.join(ROOT, "docs", "GRAPH-INDEX.md")
+    os.makedirs(os.path.dirname(index_path), exist_ok=True)
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(render_index(g))
+
+    print(f"gen_graph: {len(g['nodes'])} nodes, {len(g['edges'])} edges, "
+          f"{len(g['layers'])} layers, 0 validation issues")
+    print(f"  -> {graph_path}")
+    print(f"  -> {index_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

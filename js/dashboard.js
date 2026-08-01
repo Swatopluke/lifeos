@@ -136,6 +136,20 @@ export async function loadOverview() {
     options:{...baseOpts, scales:{ x:{...gridOpt, grid:{display:false}},
       y:{...gridOpt, suggestedMax:2600}, y1:{...gridOpt, position:'right', grid:{display:false}, suggestedMax:200} }}});
 
+  // -- food: last 24h hourly kcal --
+  {
+    const foodPairs = [
+      ...(c.mealR.data || []).map(r => ({ t: r.eaten_at, v: +(r.kcal) || 0 })),
+      ...(c.intakeR.data || []).map(r => ({ t: r.taken_at, v: +(r.kcal) || 0 })),
+    ];
+    const f24 = bucket24h(foodPairs);
+    drawChart('chFood24', { type:'bar', data:{ labels: f24.labels, datasets:[
+        { data: f24.buckets, backgroundColor: CSS('--energy')+'CC', borderRadius:3, barPercentage:.7 } ]},
+      options:{...baseOpts, plugins:{...baseOpts.plugins, legend:{display:false}},
+        scales:{ x:{...gridOpt, grid:{display:false}, ticks:{maxTicksLimit:8}},
+          y:{...gridOpt, suggestedMin:0, title:{display:true, text:'kcal', color:CSS('--faint'), font:{size:9}}} }}});
+  }
+
   // -- meal log --
   renderMealLog(c);
 
@@ -324,6 +338,15 @@ export async function loadIntake() {
   } else {
     $('intakeDetail').innerHTML = '<div class="intake-empty">Nothing logged today</div>';
   }
+
+  // -- intake: last 24h hourly event count --
+  const intakePairs = (intakeR.data || []).map(r => ({ t: r.taken_at, v: 1 }));
+  const i24 = bucket24h(intakePairs);
+  drawChart('chIntake24', { type:'bar', data:{ labels: i24.labels, datasets:[
+      { data: i24.buckets, backgroundColor: CSS('--caf')+'CC', borderRadius:3, barPercentage:.7 } ]},
+    options:{...baseOpts, plugins:{...baseOpts.plugins, legend:{display:false}},
+      scales:{ x:{...gridOpt, grid:{display:false}, ticks:{maxTicksLimit:8}},
+        y:{...gridOpt, suggestedMin:0, title:{display:true, text:'events', color:CSS('--faint'), font:{size:9}}} }}});
 }
 
 
@@ -343,6 +366,20 @@ export async function loadWorld() {
 /* ================================================================
    HELPERS
    ================================================================ */
+
+function bucket24h(pairs) {
+  const now = Date.now();
+  const labels = [];
+  for (let h = 23; h >= 0; h--) labels.push(String(new Date(now - h*3600000).getHours()).padStart(2,'0') + ':00');
+  const buckets = new Array(24).fill(0);
+  (pairs || []).forEach(({ t, v }) => {
+    const ms = new Date(t).getTime();
+    if (isNaN(ms)) return;
+    const dH = (now - ms) / 3600000;
+    if (dH >= 0 && dH < 24) buckets[23 - Math.floor(dH)] += (v || 0);
+  });
+  return { labels, buckets };
+}
 
 function drawStimChart(c) {
   const { intakeR } = c;

@@ -17,16 +17,34 @@ export const QUICK = {
               alcohol_units:DREHER.units, kcal:DREHER.kcal }
 };
 export const QUICK_TOAST = { alcohol:'Dreher Gold 5dl logged 🍺 ('+DREHER.kcal+' kcal)' };
+// Counter each tap bumps. The re-render only lands after a full refetch and a
+// chart redraw, which on a phone is slow enough to read as "nothing happened",
+// so move the number immediately and roll it back if the insert fails.
+export const QUICK_CNT = { snus:'cnt-snus', coffee:'cnt-caf', green_tea:'cnt-greencaf',
+  matcha:'cnt-matchacaf', alcohol:'cnt-booze' };
 document.querySelectorAll('[data-log]').forEach(b=>{
   b.addEventListener('click', async ()=>{
+    if(b.dataset.busy) return;                  // a second tap mid-save would double-log
+    b.dataset.busy='1';
     const key = b.dataset.log;
+    const cnt = $(QUICK_CNT[key]), before = cnt && cnt.textContent;
+    if(cnt) cnt.textContent = (+before||0)+1;
     const row = { ...QUICK[key], taken_at:new Date().toISOString(), source:'dashboard' };
     const { error } = await sb.from('intake').insert(row);
-    if(error) return toast('Failed: '+error.message, true);
+    delete b.dataset.busy;
+    if(error){ if(cnt) cnt.textContent = before; return toast('Failed: '+error.message, true); }
     toast(QUICK_TOAST[key] || key+' logged');
-    switchTab('overview', true);
+    await refreshOverview();
   });
 });
+
+// Clear the shared cache before re-rendering, or the reload recomputes from the
+// snapshot taken before this write and the counter never moves.
+async function refreshOverview(){
+  const { invalidateCache } = await import('./dashboard.js');
+  invalidateCache();
+  switchTab('overview', true);
+}
 
 /* ========= SHEET ========= */
 $('openSheet').addEventListener('click', ()=>{ $('sl-date').value = daysAgoISO(1); $('sheetWrap').classList.remove('hidden'); });
@@ -80,5 +98,5 @@ $('sheetSave').addEventListener('click', async ()=>{
   if(error) return toast('Failed: '+error.message, true);
   $('sheetWrap').classList.add('hidden');
   toast('Saved');
-  switchTab('overview', true);
+  await refreshOverview();
 });

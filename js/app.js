@@ -12,10 +12,14 @@ $('email').addEventListener('keydown', e => { if(e.key==='Enter') $('pw').focus(
 $('signoutBtn').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
 
 /* ---- floating refresh ---- */
-$('fabRefresh').addEventListener('click', ()=>{
+$('fabRefresh').addEventListener('click', async ()=>{
   const b=$('fabRefresh'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
   const active = document.querySelector('.bn-tab.active');
-  if (active) switchTab(active.dataset.tab, true);
+  if (!active) return;
+  // Without dropping the cache this only re-renders the same snapshot.
+  const { invalidateCache } = await import('./dashboard.js');
+  invalidateCache();
+  switchTab(active.dataset.tab, true);
 });
 
 /* ---- boot ---- */

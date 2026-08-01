@@ -12,6 +12,13 @@ export const budaFmt = new Intl.DateTimeFormat('en-GB', { timeZone:'Europe/Budap
 export const budaDay = new Intl.DateTimeFormat('en-CA', { timeZone:'Europe/Budapest',
   year:'numeric', month:'2-digit', day:'2-digit' });
 export const budDay = ts => (ts ? budaDay.format(new Date(ts)) : '');
+// Rolling 24h window: true for timestamps within the last 24 hours from now.
+export const within24h = ts => {
+  const ms = new Date(ts).getTime();
+  if (isNaN(ms)) return false;
+  const d = Date.now() - ms;
+  return d >= 0 && d < 86400000;
+};
 
 export function toast(msg, isErr){
   const t=$('toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':'');

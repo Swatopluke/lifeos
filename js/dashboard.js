@@ -1,7 +1,7 @@
 // Per-section dashboard loaders. A shared Supabase cache fetches all data once
 // (28-day window); each tab function renders its subset.
 import { sb } from './config.js';
-import { $, toast, todayISO, daysAgoISO, shortDay, budaFmt, budaDay, budDay, CSS } from './utils.js';
+import { $, toast, todayISO, daysAgoISO, shortDay, budaFmt, budaDay, budDay, within24h, CSS } from './utils.js';
 import { drawChart, gridOpt, baseOpts } from './charts.js';
 import { loadHistory } from './history.js';
 import { renderBriefing, renderInsights, renderFeed, renderProjects,
@@ -315,8 +315,7 @@ export async function loadIntake() {
   });
 
   // -- intake detail --
-  const today = todayISO();
-  const todayIntake = (intakeR.data||[]).filter(r => budDay(r.taken_at) === today);
+  const todayIntake = (intakeR.data||[]).filter(r => within24h(r.taken_at));
   if (todayIntake.length) {
     const fmtTime = ts => {
       const d = new Date(ts);
@@ -473,9 +472,8 @@ function drawStimChart(c) {
 }
 
 function renderMealLog(c) {
-  const today = todayISO();
   const { mealR } = c;
-  const todayMeals = (mealR.data||[]).filter(r => budDay(r.eaten_at) === today);
+  const todayMeals = (mealR.data||[]).filter(r => within24h(r.eaten_at));
   if (todayMeals.length) {
     $('mealLog').innerHTML = todayMeals
       .sort((a,b) => new Date(a.eaten_at) - new Date(b.eaten_at))
@@ -485,7 +483,7 @@ function renderMealLog(c) {
         <span class="meal-macros">${r.kcal||0}kcal · ${r.protein_g||0}g P</span>
       </div>`).join('');
   } else {
-    $('mealLog').innerHTML = '<div class="meal-empty">No meals logged today — tap ＋ Log to add one</div>';
+    $('mealLog').innerHTML = '<div class="meal-empty">No meals in the last 24h — tap ＋ Log to add one</div>';
   }
 }
 

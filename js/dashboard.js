@@ -15,6 +15,11 @@ import { renderAhead } from './calendar.js';
 
 let _cache = null;
 
+// Drop the cached snapshot so the next load refetches. Anything that writes to
+// Supabase must call this first, otherwise the re-render recomputes from the
+// pre-write data and the UI looks frozen.
+export function invalidateCache() { _cache = null; }
+
 async function getCache() {
   if (_cache) return _cache;
 
@@ -36,8 +41,10 @@ async function getCache() {
     sb.from('training').select('trained_at,created_at,session_type,duration_min,rpe').gte('created_at',sinceTs).order('created_at')
   ]);
 
+  // Warn but keep going: every consumer below falls back to [], so one failed
+  // query costs you that one card instead of blanking the whole dashboard.
   const err = [sleepR,bodyR,stateR,intakeR,mealR,suppR,slogR,goalR].find(r=>r.error);
-  if (err) { toast('Load error: ' + err.error.message, true); throw err; }
+  if (err) toast('Partial load: ' + err.error.message, true);
 
   const days = []; for (let i = 13; i >= 0; i--) days.push(daysAgoISO(i));
   const byDay = (rows, key) => { const m = {}; rows.forEach(r => { const d = budDay(r[key]); if (d) (m[d] = m[d] || []).push(r); }); return m; };

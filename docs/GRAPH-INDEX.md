@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **generated** | 2026-08-01T07:33:06Z |
-| **commit** | `5752a2edce6c6e7a1019847d4bae88534414d8d0` |
-| **nodes** | 66 |
-| **edges** | 163 |
+| **generated** | 2026-08-04T22:31:23Z |
+| **commit** | `37a3598b0a1b9eb92d417fba1e2ccdd696477604` |
+| **nodes** | 69 |
+| **edges** | 175 |
 | **layers** | 6 |
 | **tour steps** | 5 |
 
@@ -20,26 +20,26 @@
 | concept | 1 |
 | config | 1 |
 | document | 3 |
-| file | 12 |
-| function | 49 |
+| file | 13 |
+| function | 51 |
 
 ## Edge types
 
 | Type | Count |
 |---|---|
-| calls | 72 |
-| defines | 49 |
+| calls | 76 |
+| defines | 51 |
 | defines_schema | 1 |
-| depends_on | 4 |
+| depends_on | 5 |
 | documents | 3 |
-| imports | 31 |
+| imports | 36 |
 | loads | 3 |
 
 ## Layers
 
 - **Entry & shell** (3 nodes) — Page shell, bootstrap and navigation.
 - **Auth & config** (1 nodes) — Session handling and the Supabase client.
-- **Data & services** (3 nodes) — Fetching, caching, shared helpers, logging.
+- **Data & services** (4 nodes) — Fetching, caching, shared helpers, logging.
 - **UI & rendering** (4 nodes) — Charts, cards and per-card renderers.
 - **Config** (1 nodes) — Connection configuration and seed data.
 - **Docs & protocol** (4 nodes) — Hermes protocol config and generated documentation.
@@ -56,15 +56,16 @@
 
 | File | Exports | Summary |
 |---|---|---|
-| `css/styles.css` | 0 | Design tokens and layout, 322 lines. |
-| `index.html` | 0 | Single-page shell: 6 sections, 11 canvases, login gate, bottom nav and the log-sheet modal. |
+| `css/styles.css` | 0 | Design tokens and layout, 489 lines. |
+| `index.html` | 0 | Single-page shell: 7 sections, 11 canvases, login gate, bottom nav and the log-sheet modal. |
 | `js/app.js` | 0 | Bootstrap: listeners, session check, boot. 0 export(s), 25 lines. |
 | `js/auth.js` | 2 | Supabase email/password auth. 2 export(s), 19 lines. |
-| `js/cards.js` | 7 | World-tab cards (briefing, feed, projects, news). 7 export(s), 179 lines. |
+| `js/calendar.js` | 3 | Module calendar.js. 3 export(s), 392 lines. |
+| `js/cards.js` | 6 | World-tab cards (briefing, feed, projects, news). 6 export(s), 140 lines. |
 | `js/charts.js` | 4 | Chart.js wrapper. 4 export(s), 23 lines. |
 | `js/config.js` | 5 | Supabase client & seed. 5 export(s), 30 lines. |
-| `js/dashboard.js` | 6 | Per-section loaders over a shared 28-day cache. 6 export(s), 508 lines. |
+| `js/dashboard.js` | 6 | Per-section loaders over a shared 28-day cache. 6 export(s), 511 lines. |
 | `js/history.js` | 1 | Steps history card with 24H/7D/30D toggle. 1 export(s), 90 lines. |
-| `js/nav.js` | 1 | Bottom-nav tabs with per-section lazy loading. 1 export(s), 41 lines. |
+| `js/nav.js` | 1 | Bottom-nav tabs with per-section lazy loading. 1 export(s), 42 lines. |
 | `js/quicklog.js` | 4 | Quick-log taps and the log-sheet modal. 4 export(s), 85 lines. |
 | `js/utils.js` | 19 | Shared helpers (DOM, Budapest date/time). 19 export(s), 135 lines. |

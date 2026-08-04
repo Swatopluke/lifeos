@@ -1,8 +1,8 @@
 {
   "version": "1.1.0",
   "project": "LifeOS",
-  "generatedAt": "2026-08-01T07:33:06.268181+00:00",
-  "gitCommitHash": "5752a2edce6c6e7a1019847d4bae88534414d8d0",
+  "generatedAt": "2026-08-04T22:31:23.683348+00:00",
+  "gitCommitHash": "37a3598b0a1b9eb92d417fba1e2ccdd696477604",
   "nodes": [
     {
       "id": "file:index.html",
@@ -10,7 +10,7 @@
       "name": "App shell (index.html)",
       "filePath": "index.html",
       "language": "html",
-      "summary": "Single-page shell: 6 sections, 11 canvases, login gate, bottom nav and the log-sheet modal.",
+      "summary": "Single-page shell: 7 sections, 11 canvases, login gate, bottom nav and the log-sheet modal.",
       "tags": [
         "shell",
         "entry-point"
@@ -22,7 +22,7 @@
       "name": "Theme & layout",
       "filePath": "css/styles.css",
       "language": "css",
-      "summary": "Design tokens and layout, 322 lines.",
+      "summary": "Design tokens and layout, 489 lines.",
       "tags": [
         "styles",
         "theme"
@@ -75,12 +75,54 @@
       ]
     },
     {
+      "id": "file:js/calendar.js",
+      "type": "file",
+      "name": "Module calendar.js (calendar.js)",
+      "filePath": "js/calendar.js",
+      "language": "javascript",
+      "summary": "Module calendar.js. 3 export(s), 392 lines.",
+      "tags": [
+        "module"
+      ],
+      "layer": "services"
+    },
+    {
+      "id": "function:js/calendar.js:jumpTo",
+      "type": "function",
+      "name": "jumpTo",
+      "filePath": "js/calendar.js",
+      "summary": "Exported from js/calendar.js.",
+      "tags": [
+        "export"
+      ]
+    },
+    {
+      "id": "function:js/calendar.js:loadCalendar",
+      "type": "function",
+      "name": "loadCalendar",
+      "filePath": "js/calendar.js",
+      "summary": "Exported from js/calendar.js.",
+      "tags": [
+        "export"
+      ]
+    },
+    {
+      "id": "function:js/calendar.js:renderAhead",
+      "type": "function",
+      "name": "renderAhead",
+      "filePath": "js/calendar.js",
+      "summary": "Exported from js/calendar.js.",
+      "tags": [
+        "export"
+      ]
+    },
+    {
       "id": "file:js/cards.js",
       "type": "file",
       "name": "World-tab cards (briefing, feed, projects, news) (cards.js)",
       "filePath": "js/cards.js",
       "language": "javascript",
-      "summary": "World-tab cards (briefing, feed, projects, news). 7 export(s), 179 lines.",
+      "summary": "World-tab cards (briefing, feed, projects, news). 6 export(s), 140 lines.",
       "tags": [
         "cards",
         "external-api"
@@ -101,16 +143,6 @@
       "id": "function:js/cards.js:renderBriefing",
       "type": "function",
       "name": "renderBriefing",
-      "filePath": "js/cards.js",
-      "summary": "Exported from js/cards.js.",
-      "tags": [
-        "export"
-      ]
-    },
-    {
-      "id": "function:js/cards.js:renderCalendar",
-      "type": "function",
-      "name": "renderCalendar",
       "filePath": "js/cards.js",
       "summary": "Exported from js/cards.js.",
       "tags": [
@@ -279,7 +311,7 @@
       "name": "Per-section loaders over a shared 28-day cache (dashboard.js)",
       "filePath": "js/dashboard.js",
       "language": "javascript",
-      "summary": "Per-section loaders over a shared 28-day cache. 6 export(s), 508 lines.",
+      "summary": "Per-section loaders over a shared 28-day cache. 6 export(s), 511 lines.",
       "tags": [
         "dashboard",
         "data"
@@ -374,7 +406,7 @@
       "name": "Bottom-nav tabs with per-section lazy loading (nav.js)",
       "filePath": "js/nav.js",
       "language": "javascript",
-      "summary": "Bottom-nav tabs with per-section lazy loading. 1 export(s), 41 lines.",
+      "summary": "Bottom-nav tabs with per-section lazy loading. 1 export(s), 42 lines.",
       "tags": [
         "navigation"
       ],
@@ -710,6 +742,24 @@
       "weight": 1.0
     },
     {
+      "source": "file:js/calendar.js",
+      "target": "function:js/calendar.js:jumpTo",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/calendar.js:loadCalendar",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/calendar.js:renderAhead",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
       "source": "file:js/cards.js",
       "target": "function:js/cards.js:fetchProjectActivity",
       "type": "defines",
@@ -718,12 +768,6 @@
     {
       "source": "file:js/cards.js",
       "target": "function:js/cards.js:renderBriefing",
-      "type": "defines",
-      "weight": 1.0
-    },
-    {
-      "source": "file:js/cards.js",
-      "target": "function:js/cards.js:renderCalendar",
       "type": "defines",
       "weight": 1.0
     },
@@ -1100,6 +1144,66 @@
       "weight": 0.8
     },
     {
+      "source": "file:js/calendar.js",
+      "target": "file:js/config.js",
+      "type": "imports",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/config.js:sb",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/config.js:SEED_EVENTS",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "file:js/utils.js",
+      "type": "imports",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/utils.js:$",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/utils.js:todayISO",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/utils.js:dayIndex",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/utils.js:escapeHtml",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "file:js/nav.js",
+      "type": "imports",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/nav.js:switchTab",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
       "source": "file:js/cards.js",
       "target": "file:js/config.js",
       "type": "imports",
@@ -1114,12 +1218,6 @@
     {
       "source": "file:js/cards.js",
       "target": "function:js/config.js:SEED_PROJECTS",
-      "type": "calls",
-      "weight": 0.8
-    },
-    {
-      "source": "file:js/cards.js",
-      "target": "function:js/config.js:SEED_EVENTS",
       "type": "calls",
       "weight": 0.8
     },
@@ -1167,19 +1265,7 @@
     },
     {
       "source": "file:js/cards.js",
-      "target": "function:js/utils.js:shortDay",
-      "type": "calls",
-      "weight": 0.8
-    },
-    {
-      "source": "file:js/cards.js",
       "target": "function:js/utils.js:budDay",
-      "type": "calls",
-      "weight": 0.8
-    },
-    {
-      "source": "file:js/cards.js",
-      "target": "function:js/utils.js:dayIndex",
       "type": "calls",
       "weight": 0.8
     },
@@ -1395,13 +1481,19 @@
     },
     {
       "source": "file:js/dashboard.js",
-      "target": "function:js/cards.js:renderCalendar",
+      "target": "function:js/cards.js:renderNews",
       "type": "calls",
       "weight": 0.8
     },
     {
       "source": "file:js/dashboard.js",
-      "target": "function:js/cards.js:renderNews",
+      "target": "file:js/calendar.js",
+      "type": "imports",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/dashboard.js",
+      "target": "function:js/calendar.js:renderAhead",
       "type": "calls",
       "weight": 0.8
     },
@@ -1556,6 +1648,12 @@
       "weight": 1.0
     },
     {
+      "source": "file:js/nav.js",
+      "target": "file:js/calendar.js",
+      "type": "imports",
+      "weight": 1.0
+    },
+    {
       "source": "file:js/quicklog.js",
       "target": "file:js/config.js",
       "type": "imports",
@@ -1608,6 +1706,12 @@
       "target": "function:js/nav.js:switchTab",
       "type": "calls",
       "weight": 0.8
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "concept:SupabaseBackend",
+      "type": "depends_on",
+      "weight": 0.6
     },
     {
       "source": "file:js/cards.js",
@@ -1700,6 +1804,7 @@
       "name": "Data & services",
       "description": "Fetching, caching, shared helpers, logging.",
       "nodeIds": [
+        "file:js/calendar.js",
         "file:js/dashboard.js",
         "file:js/quicklog.js",
         "file:js/utils.js"
@@ -1780,9 +1885,9 @@
     }
   ],
   "stats": {
-    "totalNodes": 66,
-    "totalEdges": 163,
-    "modules": 10,
+    "totalNodes": 69,
+    "totalEdges": 175,
+    "modules": 11,
     "tables": 16
   }
 }

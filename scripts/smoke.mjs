@@ -26,7 +26,7 @@ const fail = m => failures.push(m);
 const opens = (html.match(/<section\b/g) || []).length;
 const closes = (html.match(/<\/section>/g) || []).length;
 if (opens !== closes) fail(`unbalanced <section>: ${opens} open vs ${closes} close`);
-if (opens !== 6) fail(`expected 6 sections (overview/sleep/body/training/intake/world), found ${opens}`);
+if (opens !== 7) fail(`expected 7 sections (overview/sleep/body/training/intake/world/calendar), found ${opens}`);
 
 // ---- 2. every local asset the shell references exists ---------------------
 const assets = [

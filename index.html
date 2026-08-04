@@ -85,6 +85,13 @@
       <p class="csub">Logged meals</p>
       <div id="mealLog"><div class="loading">Loading…</div></div>
     </div>
+
+    <div class="sec-h">What's ahead</div>
+    <div class="card">
+      <h2>Calendar</h2>
+      <p class="csub" id="aheadSub">Loading…</p>
+      <div id="aheadList"><div class="loading">Loading…</div></div>
+    </div>
   </section>
 
   <!-- ===== SLEEP ===== -->
@@ -194,14 +201,40 @@
       <div id="insightList"><div class="loading">Loading…</div></div>
     </div>
     <div class="card">
-      <h2>Calendar</h2>
-      <p class="csub">Upcoming · next events</p>
-      <div id="calList"><div class="loading">Loading…</div></div>
-    </div>
-    <div class="card">
       <h2>Hacker News</h2>
       <p class="csub">Top stories right now</p>
       <div id="newsList"><div class="loading">Loading…</div></div>
+    </div>
+  </section>
+
+  <!-- ===== CALENDAR ===== -->
+  <section data-section="calendar">
+    <div class="cal-top">
+      <div class="cal-hd">
+        <h2 id="calMonth">—</h2>
+        <div class="cal-yr" id="calYear"></div>
+      </div>
+      <div class="cal-nav">
+        <button class="calbtn" id="calPrev" aria-label="Previous month">‹</button>
+        <button class="calbtn calbtn-w" id="calToday">Today</button>
+        <button class="calbtn" id="calNext" aria-label="Next month">›</button>
+      </div>
+    </div>
+    <div class="cal-rail" id="calRail" role="tablist" aria-label="Months"></div>
+
+    <div class="card cal-card">
+      <div class="cal-grid" id="calGrid"><div class="loading">Loading…</div></div>
+      <div class="cal-key" id="calKey">
+        <span class="ck ck-now"></span>in progress
+        <span class="ck ck-next"></span>upcoming
+        <span class="ck ck-past"></span>passed
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Agenda</h2>
+      <p class="csub" id="calCount">Loading…</p>
+      <div id="calAgenda"><div class="loading">Loading…</div></div>
     </div>
   </section>
 
@@ -213,6 +246,7 @@
     <button class="bn-tab" data-tab="training"><span class="bn-ico">🏋️</span><span>Training</span></button>
     <button class="bn-tab" data-tab="intake"><span class="bn-ico">💊</span><span>Intake</span></button>
     <button class="bn-tab" data-tab="world"><span class="bn-ico">🌐</span><span>World</span></button>
+    <button class="bn-tab" data-tab="calendar"><span class="bn-ico">🗓️</span><span>Calendar</span></button>
   </nav>
 </div>
 

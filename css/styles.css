@@ -3,6 +3,9 @@
   --text:#20242B; --dim:#5C6270; --faint:#969CA8;
   --sleep:#4C6FE8; --food:#178F66; --snus:#C97C2B; --booze:#C94F63;
   --caf:#7C5CD6; --weight:#A5822B; --energy:#0E8578;
+  /* --energy at 12% / 35% over white — precomputed so calendar bars can tint
+     without color-mix() and still match the accent exactly. */
+  --energy-soft:#E2F0EF; --energy-line:#ABD4D0;
   --rule:#DAD5C9;
   --shadow:0 1px 2px rgba(32,36,43,.03);
 }
@@ -200,21 +203,180 @@ details.more>summary .sum-sub{font-size:11px;font-weight:400;color:var(--faint);
 .ptask.todo .mk{background:var(--surface);border:1.5px solid var(--border);color:transparent}
 .proj-act-top{display:flex;justify-content:space-between;font-size:11px;color:var(--faint);margin-bottom:6px}
 
-/* calendar */
-.cal{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
-.cal:last-child{border-bottom:none}
-.cal-date{text-align:center;flex-shrink:0;width:46px}
-.cal-d{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700}
-.cal-m{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}
-.cal-int .cal-date .cal-d{font-size:13px}
-.cal-int .cal-date .cal-m{font-size:8px}
-.cal-int{border-left:2px solid var(--energy);padding-left:9px}
-.cal-body{flex:1;min-width:0}
-.cal-title{font-size:13px;font-weight:600}
-.cal-meta{font-size:11px;color:var(--faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cal-count{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;
-  padding:4px 9px;border-radius:2px;background:var(--surface2);border:1px solid var(--border);white-space:nowrap}
-.cal-count.soon{color:var(--energy);border-color:var(--energy)}
+/* ============================================================
+   CALENDAR
+   Overview ledger ("Ahead"), month grid, year rail, agenda.
+   ============================================================ */
+
+/* --- overview: countdown ledger on a timeline spine --- */
+.ahead{position:relative;padding-left:26px}
+.ah{position:relative;display:flex;align-items:flex-start;gap:13px;width:100%;
+  background:transparent;padding:13px 2px;text-align:left;
+  border:none;border-bottom:1px solid var(--border)}
+.ah:last-child{border-bottom:none}
+/* The spine is drawn per row rather than down the container so it can begin at
+   the first dot and stop at the last one, whatever height the rows end up. */
+.ah::after{content:'';position:absolute;left:-21px;top:0;bottom:-1px;width:1px;
+  background:var(--rule)}
+.ah:first-child::after{top:23px}
+.ah:last-child::after{bottom:auto;height:23px}
+.ah::before{content:'';position:absolute;left:-25px;top:19px;width:9px;height:9px;
+  border-radius:50%;background:var(--surface);border:1.5px solid var(--rule);
+  z-index:1;transition:background .15s,border-color .15s}
+.ah.now::before{background:var(--energy);border-color:var(--energy)}
+.ah:hover::before{border-color:var(--text)}
+.ah-n{flex-shrink:0;width:46px;display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+.ah-n b{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;
+  line-height:1;letter-spacing:-.02em}
+.ah-n span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+.ah-tok{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--energy);line-height:1.55}
+.ah-b{flex:1;min-width:0;display:block}
+.ah-t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  font-size:13.5px;font-weight:600;line-height:1.35;overflow:hidden}
+.ah:hover .ah-t{color:var(--energy)}
+.ah-m{display:block;font-size:11px;color:var(--faint);margin-top:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ahead-all{display:block;width:100%;margin-top:14px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:3px;padding:10px;
+  font-size:11px;font-weight:700;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.06em}
+.ahead-all:hover{border-color:var(--text);color:var(--text)}
+.ahead-empty{font-size:12.5px;color:var(--faint);padding:18px 2px;line-height:1.5}
+
+/* --- page header --- */
+.cal-top{display:flex;align-items:flex-end;justify-content:space-between;
+  gap:16px;margin:6px 0 14px}
+.cal-hd h2{font-family:Fraunces,Georgia,serif;font-size:27px;font-weight:600;
+  margin:0;letter-spacing:-.015em;line-height:1.05}
+.cal-yr{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);
+  letter-spacing:.12em;margin-top:5px}
+.cal-nav{display:flex;gap:6px;flex-shrink:0}
+.calbtn{background:var(--surface);border:1px solid var(--border);color:var(--dim);
+  width:38px;height:34px;border-radius:3px;font-size:16px;line-height:1;
+  display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+.calbtn-w{width:auto;padding:0 14px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em}
+.calbtn:hover{border-color:var(--text);color:var(--text)}
+.calbtn.on{color:var(--faint);border-color:var(--border);pointer-events:none}
+
+/* --- year rail: an index strip of the twelve months --- */
+.cal-rail{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  padding:8px 0;margin-bottom:14px}
+.cr{background:transparent;border:none;border-radius:3px;padding:5px 2px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.cr-l{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500;
+  letter-spacing:.06em;color:var(--dim);text-transform:uppercase}
+.cr-n{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--text)}
+.cr:hover{background:var(--surface2)}
+.cr.zero .cr-l,.cr.zero .cr-n{color:var(--faint);font-weight:500}
+.cr.now .cr-l{color:var(--energy)}
+.cr.on{background:var(--text)}
+.cr.on .cr-l,.cr.on .cr-n{color:#fff}
+
+/* --- month grid --- */
+.cal-card{padding:16px 16px 14px}
+.cal-grid{--h1:24px;--lh:19px;--pad:8px;border-bottom:1px solid var(--rule)}
+.cg-h{display:grid;grid-template-columns:repeat(7,1fr);padding-bottom:8px}
+.cg-h span{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding-left:6px}
+.cg-h span.we{color:var(--faint)}
+/* Week rows are only as tall as their content: an empty week is a thin band, a
+   week with four overlapping events is deep. The trailing minmax row absorbs the
+   slack so the column hairlines always reach the bottom of the band. */
+.cg-w{display:grid;grid-template-columns:repeat(7,1fr);min-height:54px;
+  border-top:1px solid var(--rule)}
+.cg-c{min-width:0;padding:4px 0 0;border-left:1px solid var(--border)}
+.cg-c:first-child{border-left:none}
+.cg-c.has{cursor:pointer}
+.cg-c.has:hover{background:var(--surface2)}
+.cg-n{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;
+  font-weight:500;color:var(--text);padding:2px 5px;border-radius:2px;margin-left:1px}
+/* Out-of-month days step down to --dim rather than --faint: the hierarchy still
+   reads at a glance and the numerals stay above 4.5:1 on paper. */
+.cg-c.out .cg-n{color:var(--dim);font-weight:400}
+.cg-c.today .cg-n{background:var(--energy);color:#fff;font-weight:700}
+.cg-more{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);
+  margin-left:6px}
+.cg-b{grid-row:auto;height:calc(var(--lh) - 3px);line-height:calc(var(--lh) - 3px);
+  padding:0 7px;border:1px solid transparent;border-radius:0;
+  font-family:Inter,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:-.005em;
+  text-align:left;overflow:hidden;white-space:nowrap;display:block;min-width:0}
+.cg-b>span{display:block;overflow:hidden;text-overflow:ellipsis}
+.cg-b.s{border-top-left-radius:3px;border-bottom-left-radius:3px;margin-left:3px}
+.cg-b.e{border-top-right-radius:3px;border-bottom-right-radius:3px;margin-right:3px}
+.cg-b.next{background:var(--energy-soft);border-color:var(--energy-line);color:#0B6B60}
+.cg-b.now{background:var(--energy);border-color:var(--energy);color:#fff}
+.cg-b.past{background:var(--surface2);border-color:var(--border);color:var(--dim)}
+.cg-b:hover{filter:brightness(.96)}
+.cg-b.past:hover{color:var(--text)}
+
+.cal-key{display:flex;align-items:center;gap:7px;padding-top:11px;
+  font-size:10px;color:var(--dim);letter-spacing:.02em}
+.ck{width:16px;height:8px;border-radius:2px;border:1px solid var(--border);
+  display:inline-block;margin-left:9px}
+.ck:first-child{margin-left:0}
+.ck-now{background:var(--energy);border-color:var(--energy)}
+.ck-next{background:var(--energy-soft);border-color:var(--energy-line)}
+.ck-past{background:var(--surface2)}
+
+/* --- agenda --- */
+.ag{display:grid;grid-template-columns:58px 1fr auto;gap:14px;align-items:start;
+  padding:15px 0;border-bottom:1px solid var(--border);scroll-margin-top:20px}
+.ag:first-child{padding-top:2px}
+.ag:last-child{border-bottom:none;padding-bottom:2px}
+.ag-d{text-align:left;padding-top:1px}
+.ag-dd{display:block;font-family:'JetBrains Mono',monospace;font-size:17px;
+  font-weight:700;line-height:1.1;letter-spacing:-.02em}
+.ag-dm{display:block;font-family:'JetBrains Mono',monospace;font-size:9px;
+  text-transform:uppercase;letter-spacing:.09em;color:var(--faint);margin-top:3px}
+.ag-b{min-width:0}
+.ag-t{font-family:Inter,sans-serif;font-size:14px;font-weight:700;margin:0;line-height:1.35}
+.ag-m{font-size:11px;color:var(--faint);margin-top:4px}
+.ag-note{font-size:12.5px;color:var(--dim);line-height:1.55;margin:8px 0 0;max-width:66ch}
+.ag-c{font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
+  color:var(--dim);background:var(--surface2);border:1px solid var(--border);
+  padding:4px 9px;border-radius:2px;white-space:nowrap}
+.ag.now .ag-dd,.ag.now .ag-dm{color:var(--energy)}
+.ag.now .ag-c{color:var(--energy);border-color:var(--energy-line);background:var(--energy-soft)}
+.ag.past .ag-dd,.ag.past .ag-t{color:var(--dim)}
+.ag.past .ag-dm,.ag.past .ag-note{color:var(--faint)}
+.ag.hl{animation:aghl 1.5s ease-out}
+@keyframes aghl{from{background:var(--energy-soft)}to{background:transparent}}
+
+/* The app has no focus styling of its own; these controls are keyboard targets
+   packed tightly enough that the UA ring alone is hard to follow. */
+.ah:focus-visible,.ahead-all:focus-visible,.calbtn:focus-visible,
+.cr:focus-visible,.cg-b:focus-visible,.cal-jump:focus-visible{
+  outline:2px solid var(--energy);outline-offset:1px}
+
+.cal-none{padding:26px 2px 6px}
+.cal-none p{margin:0 0 14px;font-size:12.5px;color:var(--faint)}
+.cal-jump{background:var(--surface2);border:1px solid var(--border);border-radius:3px;
+  padding:10px 13px;font-size:12px;font-weight:600;color:var(--dim);text-align:left;
+  max-width:100%;line-height:1.4}
+.cal-jump:hover{border-color:var(--energy);color:var(--energy)}
+
+@media(max-width:640px){
+  /* Below ~90px a column cannot hold a legible title, so the grid stops trying:
+     bars collapse to a gantt strip and the agenda carries the words. */
+  .cal-grid{--h1:21px;--lh:9px;--pad:6px}
+  .cg-b{font-size:0;color:transparent;padding:0}
+  .cg-b.s{margin-left:2px}
+  .cg-b.e{margin-right:2px}
+  .cal-card{padding:13px 12px 12px}
+  .cg-h span{padding-left:3px;font-size:8.5px}
+  .cg-n{font-size:10px;padding:2px 4px}
+  .cg-more{display:none}
+  .cal-hd h2{font-size:23px}
+  .cal-rail{gap:0}
+  .cr-l{font-size:8px;letter-spacing:.02em}
+  .cr-n{font-size:11px}
+  .ag{grid-template-columns:46px 1fr;gap:11px}
+  .ag-c{grid-column:2;justify-self:start;margin-top:2px}
+  .ag-dd{font-size:15px}
+}
 
 /* news */
 .news-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
@@ -281,14 +443,19 @@ section[data-section].active{display:block}
   background:var(--surface);border-top:1px solid var(--border);
   padding:6px 4px calc(6px + env(safe-area-inset-bottom));
   z-index:50;box-shadow:0 -2px 12px rgba(32,36,43,.06)}
+/* flex:1 over min-width so the seventh tab (Calendar) shares the row evenly
+   instead of pushing the strip past a 375px viewport. */
 .bn-tab{display:flex;flex-direction:column;align-items:center;gap:2px;
   background:transparent;border:none;color:var(--faint);
-  font-size:9.5px;font-weight:600;padding:4px 8px;
+  font-size:9.5px;font-weight:600;padding:4px 3px;
   transition:color .15s;letter-spacing:.02em;
-  min-width:48px}
+  flex:1 1 0;min-width:0}
 .bn-tab .bn-ico{font-size:18px;line-height:1}
+.bn-tab>span:last-child{max-width:100%;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
 .bn-tab.active{color:var(--text)}
 .bn-tab:active{transform:scale(.94)}
+@media(max-width:400px){.bn-tab{font-size:8.5px;letter-spacing:0}}
 
 /* app padding adjusted for bottom nav */
 #app{padding-bottom:calc(100px + env(safe-area-inset-bottom))}

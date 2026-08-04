@@ -1,11 +1,6 @@
-import { sb, SEED_PROJECTS, SEED_EVENTS } from './config.js';
-import { $, escapeHtml, timeAgo, domainOf, todayISO, daysAgoISO, shortDay, budDay,
-         dayIndex, CSS } from './utils.js';
+import { sb, SEED_PROJECTS } from './config.js';
+import { $, escapeHtml, timeAgo, domainOf, todayISO, daysAgoISO, budDay, CSS } from './utils.js';
 
-// Date-only values (event start/end) carry no zone. Formatting them in UTC after
-// parsing them as UTC is the only way to get the same label in every timezone.
-const evDayFmt   = new Intl.DateTimeFormat('en-GB', { timeZone:'UTC', day:'numeric', month:'short' });
-const evMonthFmt = new Intl.DateTimeFormat('en-GB', { timeZone:'UTC', month:'short' });
 import { drawChart, gridOpt, baseOpts } from './charts.js';
 
 export async function renderBriefing(){
@@ -114,40 +109,6 @@ export async function fetchProjectActivity(repo, key){
         plugins:{ legend:{display:false}, tooltip:{ backgroundColor:CSS('--surface2'), borderColor:CSS('--border'), borderWidth:1, titleColor:CSS('--text'), bodyColor:CSS('--dim'), padding:9, displayColors:false } },
         scales:{ x:{grid:{display:false}}, y:{...gridOpt, suggestedMin:0} } } });
   } catch(e){ /* rate-limited or offline — leave placeholders */ }
-}
-
-export async function renderCalendar(){
-  let rows = SEED_EVENTS;
-  try { const { data, error } = await sb.from('events').select('*').order('start'); if(!error && data && data.length) rows = data; } catch(e){}
-  if(!rows || !rows.length){ $('calList').innerHTML = '<div class="empty">No events</div>'; return; }
-  const todayIdx = dayIndex(todayISO());
-  const items = rows.map(ev=>{
-    const s = new Date(ev.start+'T00:00:00Z');
-    const e = new Date((ev.end||ev.start)+'T00:00:00Z');
-    // Pure date arithmetic against the Budapest calendar day — no local midnight.
-    const diff = dayIndex(ev.start) - todayIdx;
-    const endIdx = dayIndex(ev.end||ev.start);
-    let countTxt, soon=false;
-    if(diff>0){ countTxt='in '+diff+'d'; if(diff<=21) soon=true; }
-    else if(diff===0){ countTxt='today'; soon=true; }
-    else if(diff<=0 && endIdx>=todayIdx){ countTxt='live'; soon=true; }
-    else { countTxt = Math.abs(diff)+'d ago'; }
-    const md = evDayFmt.format(s);
-    const ed = evDayFmt.format(e);
-    const isInterval = ev.end && ev.end!==ev.start;
-    const range = md + (isInterval ? ' – '+ed : '');
-    // Date chip: for intervals show "DD.MM–DD.MM", else just the day + month
-    const chipD = isInterval
-      ? `${s.getUTCDate()}.${String(s.getUTCMonth()+1).padStart(2,'0')}–${e.getUTCDate()}.${String(e.getUTCMonth()+1).padStart(2,'0')}`
-      : String(s.getUTCDate()).padStart(2,'0');
-    const chipM = isInterval ? `${String(s.getUTCMonth()+1).padStart(2,'0')}–${String(e.getUTCMonth()+1).padStart(2,'0')}` : evMonthFmt.format(s);
-    return `<div class="cal${isInterval?' cal-int':''}"><div class="cal-date"><div class="cal-d">${chipD}</div>
-      <div class="cal-m">${chipM}</div></div>
-      <div class="cal-body"><div class="cal-title">${ev.title}</div>
-      <div class="cal-meta">${range}${ev.location?' · '+ev.location:''}${ev.note?' · '+ev.note:''}</div></div>
-      <div class="cal-count ${soon?'soon':''}">${countTxt}</div></div>`;
-  });
-  $('calList').innerHTML = items.join('');
 }
 
 /* ---- Hacker News (public API, no key needed) ---- */

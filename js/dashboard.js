@@ -6,7 +6,8 @@ import { $, toast, todayISO, daysAgoISO, shortDay, budaFmt, budaDay, budDay, bud
 import { drawChart, gridOpt, baseOpts } from './charts.js';
 import { loadHistory } from './history.js';
 import { renderBriefing, renderInsights, renderFeed, renderProjects,
-         renderCalendar, renderNews } from './cards.js';
+         renderNews } from './cards.js';
+import { renderAhead } from './calendar.js';
 
 /* ================================================================
    SHARED CACHE — fetch once, reuse across all tabs
@@ -159,6 +160,9 @@ export async function loadOverview() {
 
   // -- briefing --
   renderBriefing();
+
+  // -- what's ahead (events live outside the 28-day cache) --
+  renderAhead();
 }
 
 
@@ -359,7 +363,6 @@ export async function loadIntake() {
 export async function loadWorld() {
   renderFeed();
   renderProjects();
-  renderCalendar();
   renderNews();
   renderInsights();
 }

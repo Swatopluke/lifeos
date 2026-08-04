@@ -10,6 +10,7 @@ const LOADERS = {
   training:  () => import('./dashboard.js').then(m => m.loadTraining()),
   intake:    () => import('./dashboard.js').then(m => m.loadIntake()),
   world:     () => import('./dashboard.js').then(m => m.loadWorld()),
+  calendar:  () => import('./calendar.js').then(m => m.loadCalendar()),
 };
 
 const loaded = new Set();

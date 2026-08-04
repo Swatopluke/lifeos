@@ -6,8 +6,8 @@
 
 | | |
 |---|---|
-| **generated** | 2026-08-04T22:41:53Z |
-| **commit** | `b435bef3c7fb26bf8b75aa8ba5986d535b8a78eb` |
+| **generated** | 2026-08-04T23:32:59Z |
+| **commit** | `d15a63ae7850e83b6fe72bc74ad1aba54358bc87` |
 | **nodes** | 71 |
 | **edges** | 179 |
 | **layers** | 6 |
@@ -27,10 +27,10 @@
 
 | Type | Count |
 |---|---|
-| calls | 76 |
+| calls | 77 |
 | defines | 53 |
 | defines_schema | 1 |
-| depends_on | 5 |
+| depends_on | 4 |
 | documents | 3 |
 | imports | 38 |
 | loads | 3 |
@@ -56,11 +56,11 @@
 
 | File | Exports | Summary |
 |---|---|---|
-| `css/styles.css` | 0 | Design tokens and layout, 489 lines. |
+| `css/styles.css` | 0 | Design tokens and layout, 500 lines. |
 | `index.html` | 0 | Single-page shell: 7 sections, 11 canvases, login gate, bottom nav and the log-sheet modal. |
 | `js/app.js` | 0 | Bootstrap: listeners, session check, boot. 0 export(s), 29 lines. |
 | `js/auth.js` | 2 | Supabase email/password auth. 2 export(s), 19 lines. |
-| `js/calendar.js` | 3 | Module calendar.js. 3 export(s), 392 lines. |
+| `js/calendar.js` | 3 | Module calendar.js. 3 export(s), 438 lines. |
 | `js/cards.js` | 6 | World-tab cards (briefing, feed, projects, news). 6 export(s), 140 lines. |
 | `js/charts.js` | 4 | Chart.js wrapper. 4 export(s), 23 lines. |
 | `js/config.js` | 5 | Supabase client & seed. 5 export(s), 30 lines. |

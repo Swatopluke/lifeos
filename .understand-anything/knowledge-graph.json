@@ -1,8 +1,8 @@
 {
   "version": "1.1.0",
   "project": "LifeOS",
-  "generatedAt": "2026-08-04T22:41:53.143005+00:00",
-  "gitCommitHash": "b435bef3c7fb26bf8b75aa8ba5986d535b8a78eb",
+  "generatedAt": "2026-08-04T23:32:59.141845+00:00",
+  "gitCommitHash": "d15a63ae7850e83b6fe72bc74ad1aba54358bc87",
   "nodes": [
     {
       "id": "file:index.html",
@@ -22,7 +22,7 @@
       "name": "Theme & layout",
       "filePath": "css/styles.css",
       "language": "css",
-      "summary": "Design tokens and layout, 489 lines.",
+      "summary": "Design tokens and layout, 500 lines.",
       "tags": [
         "styles",
         "theme"
@@ -80,7 +80,7 @@
       "name": "Module calendar.js (calendar.js)",
       "filePath": "js/calendar.js",
       "language": "javascript",
-      "summary": "Module calendar.js. 3 export(s), 392 lines.",
+      "summary": "Module calendar.js. 3 export(s), 438 lines.",
       "tags": [
         "module"
       ],
@@ -741,7 +741,7 @@
       "id": "concept:SupabaseBackend",
       "type": "concept",
       "name": "Supabase backend",
-      "summary": "Remote Postgres + Auth. 16 table(s) referenced: body_metrics, briefings, daily_state, events, feed_items, goals, health_metrics, health_raw, insights, intake, meals, projects, sleep, supplement_log, supplements, training.",
+      "summary": "Remote Postgres + Auth. 15 table(s) referenced: body_metrics, briefings, daily_state, feed_items, goals, health_metrics, health_raw, insights, intake, meals, projects, sleep, supplement_log, supplements, training.",
       "tags": [
         "backend",
         "supabase"
@@ -1189,7 +1189,13 @@
     },
     {
       "source": "file:js/calendar.js",
-      "target": "function:js/config.js:sb",
+      "target": "function:js/config.js:SUPABASE_URL",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/calendar.js",
+      "target": "function:js/config.js:SUPABASE_KEY",
       "type": "calls",
       "weight": 0.8
     },
@@ -1752,12 +1758,6 @@
       "weight": 1.0
     },
     {
-      "source": "file:js/calendar.js",
-      "target": "concept:SupabaseBackend",
-      "type": "depends_on",
-      "weight": 0.6
-    },
-    {
       "source": "file:js/cards.js",
       "target": "concept:SupabaseBackend",
       "type": "depends_on",
@@ -1932,6 +1932,6 @@
     "totalNodes": 71,
     "totalEdges": 179,
     "modules": 11,
-    "tables": 16
+    "tables": 15
   }
 }

@@ -157,13 +157,14 @@ const allButton = n => '<button class="ahead-all">'
    ================================================================ */
 
 let viewY = null, viewM = null;
+let scope = 'month';           // 'month' = the grid's month · 'all' = the whole table
 let pendingFocus = null;
 let wired = false;
 let rendered = [];   // the last fetched rows; the delegated handlers read these
 
 /** Switch to the calendar tab, land on `iso`'s month, and flag a row to flash. */
 export function jumpTo(iso, key) {
-  if (iso) { viewY = +iso.slice(0, 4); viewM = +iso.slice(5, 7); }
+  if (iso) { viewY = +iso.slice(0, 4); viewM = +iso.slice(5, 7); scope = 'month'; }
   else { viewY = null; }
   pendingFocus = key || null;
   switchTab('calendar');
@@ -210,6 +211,12 @@ function wire() {
   $('calToday').addEventListener('click', () => {
     const t = todayISO();
     viewY = +t.slice(0, 4); viewM = +t.slice(5, 7); loadCalendar();
+  });
+
+  $('calScope').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.dataset.s === scope) return;
+    scope = b.dataset.s;
+    loadCalendar();
   });
 
   $('calRail').addEventListener('click', e => {
@@ -344,12 +351,30 @@ function render(evs) {
   $('calKey').classList.toggle('hidden', !vis.length);
 
   /* ---- agenda ---- */
+  // "All events" exists because the month view hides most of the table: with a
+  // handful of rows spread over five months, paging the rail is the only way to
+  // learn they are there, and that reads as missing data.
   const monthEvs = evs.filter(e => e.ei >= start && e.si < start + len);
-  $('calCount').textContent = monthEvs.length
-    ? monthEvs.length + (monthEvs.length === 1 ? ' event' : ' events') + ' this month'
-    : 'Nothing scheduled';
+  const listed = scope === 'all' ? evs : monthEvs;
+  document.querySelectorAll('#calScope button').forEach(b =>
+    b.classList.toggle('on', b.dataset.s === scope));
 
-  if (!monthEvs.length) {
+  $('calCount').textContent = scope === 'all'
+    ? (evs.length
+        ? evs.length + (evs.length === 1 ? ' event' : ' events') + ' tracked · '
+          + monShort(evs[0].start) + ' ' + evs[0].start.slice(0, 4) + ' – '
+          + monShort(evs[evs.length - 1].end) + ' ' + evs[evs.length - 1].end.slice(0, 4)
+        : 'Nothing tracked')
+    : (monthEvs.length
+        ? monthEvs.length + (monthEvs.length === 1 ? ' event' : ' events') + ' this month'
+        : 'Nothing scheduled');
+
+  if (!listed.length) {
+    if (scope === 'all') {
+      $('calAgenda').innerHTML = '<div class="cal-none"><p>No events yet.</p></div>';
+      consumeFocus();
+      return;
+    }
     const next = evs.find(e => e.si >= start + len);
     const prev = [...evs].reverse().find(e => e.ei < start);
     const link = next || prev;
@@ -363,12 +388,24 @@ function render(evs) {
     return;
   }
 
-  $('calAgenda').innerHTML = monthEvs.map(ev => {
+  let runMonth = null;
+  $('calAgenda').innerHTML = listed.map(ev => {
     const st = stateOf(ev, today);
     const sd = dayNum(ev.start), ed = dayNum(ev.end);
     const dd = ev.start === ev.end ? pad2(sd) : pad2(sd) + '–' + pad2(ed);
     const dm = monShort(ev.start) + (monShort(ev.start) !== monShort(ev.end) ? '/' + monShort(ev.end) : '');
-    return '<article class="ag ' + st + '" id="ag-' + ev.key + '">'
+    // A flat run across five months is hard to scan, so the whole-table list
+    // gets a rule wherever the month turns over.
+    let sep = '';
+    if (scope === 'all') {
+      const mk = ev.start.slice(0, 7);
+      if (mk !== runMonth) {
+        runMonth = mk;
+        sep = '<div class="ag-sep"><span>' + M_LONG[+mk.slice(5, 7) - 1] + '</span>'
+            + '<i>' + mk.slice(0, 4) + '</i></div>';
+      }
+    }
+    return sep + '<article class="ag ' + st + '" id="ag-' + ev.key + '">'
       + '<div class="ag-d"><span class="ag-dd">' + dd + '</span><span class="ag-dm">' + dm + '</span></div>'
       + '<div class="ag-b"><h3 class="ag-t">' + escapeHtml(ev.title) + '</h3>'
       + '<div class="ag-m">' + rangeLabel(ev)

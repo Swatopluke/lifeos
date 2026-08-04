@@ -9,7 +9,7 @@
 // day count, which is exactly what a day count means.
 //
 // The table is read-only from this UI — rows arrive from Hermes or by SQL.
-import { sb, SEED_EVENTS } from './config.js';
+import { SUPABASE_URL, SUPABASE_KEY, SEED_EVENTS } from './config.js';
 import { $, todayISO, dayIndex, escapeHtml } from './utils.js';
 import { switchTab } from './nav.js';
 
@@ -45,12 +45,21 @@ const isoOf = idx => {
 // Deliberately uncached. Twelve date-only rows cost nothing to refetch, and a
 // cache would have to be invalidated by the FAB's force-refresh, which reaches
 // modules only through switchTab() and cannot tell them anything.
+// Read with the publishable key explicitly, NOT through `sb`. Once a session
+// exists, supabase-js swaps the anon key for the user's JWT, and the `events`
+// RLS policy grants SELECT to `anon` but not to `authenticated` — so a
+// signed-in read came back empty and the seed silently took over, showing one
+// event where the table holds twelve. A plain fetch pins the anon role.
+//
+// A failed read is no longer indistinguishable from an empty table: it throws,
+// and the callers say so. Falling back to the seed on error is what hid this.
 async function getEvents() {
-  let rows = SEED_EVENTS;
-  try {
-    const { data, error } = await sb.from('events').select('*').order('start');
-    if (!error && data && data.length) rows = data;
-  } catch (e) { /* table missing or offline — fall back to the seed */ }
+  const res = await fetch(
+    SUPABASE_URL + '/rest/v1/events?select=*&order=start.asc',
+    { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } });
+  if (!res.ok) throw new Error('events HTTP ' + res.status);
+  const data = await res.json();
+  const rows = (Array.isArray(data) && data.length) ? data : SEED_EVENTS;
 
   return (rows || [])
     .filter(e => e && e.start)

@@ -1,8 +1,8 @@
 {
   "version": "1.1.0",
   "project": "LifeOS",
-  "generatedAt": "2026-08-04T22:31:23.683348+00:00",
-  "gitCommitHash": "37a3598b0a1b9eb92d417fba1e2ccdd696477604",
+  "generatedAt": "2026-08-04T22:41:53.143005+00:00",
+  "gitCommitHash": "b435bef3c7fb26bf8b75aa8ba5986d535b8a78eb",
   "nodes": [
     {
       "id": "file:index.html",
@@ -34,7 +34,7 @@
       "name": "Bootstrap: listeners, session check, boot (app.js)",
       "filePath": "js/app.js",
       "language": "javascript",
-      "summary": "Bootstrap: listeners, session check, boot. 0 export(s), 25 lines.",
+      "summary": "Bootstrap: listeners, session check, boot. 0 export(s), 29 lines.",
       "tags": [
         "entry",
         "bootstrap"
@@ -311,12 +311,22 @@
       "name": "Per-section loaders over a shared 28-day cache (dashboard.js)",
       "filePath": "js/dashboard.js",
       "language": "javascript",
-      "summary": "Per-section loaders over a shared 28-day cache. 6 export(s), 511 lines.",
+      "summary": "Per-section loaders over a shared 28-day cache. 7 export(s), 518 lines.",
       "tags": [
         "dashboard",
         "data"
       ],
       "layer": "services"
+    },
+    {
+      "id": "function:js/dashboard.js:invalidateCache",
+      "type": "function",
+      "name": "invalidateCache",
+      "filePath": "js/dashboard.js",
+      "summary": "Exported from js/dashboard.js.",
+      "tags": [
+        "export"
+      ]
     },
     {
       "id": "function:js/dashboard.js:loadBody",
@@ -428,7 +438,7 @@
       "name": "Quick-log taps and the log-sheet modal (quicklog.js)",
       "filePath": "js/quicklog.js",
       "language": "javascript",
-      "summary": "Quick-log taps and the log-sheet modal. 4 export(s), 85 lines.",
+      "summary": "Quick-log taps and the log-sheet modal. 5 export(s), 103 lines.",
       "tags": [
         "logging"
       ],
@@ -448,6 +458,16 @@
       "id": "function:js/quicklog.js:QUICK",
       "type": "function",
       "name": "QUICK",
+      "filePath": "js/quicklog.js",
+      "summary": "Exported from js/quicklog.js.",
+      "tags": [
+        "export"
+      ]
+    },
+    {
+      "id": "function:js/quicklog.js:QUICK_CNT",
+      "type": "function",
+      "name": "QUICK_CNT",
       "filePath": "js/quicklog.js",
       "summary": "Exported from js/quicklog.js.",
       "tags": [
@@ -851,6 +871,12 @@
     },
     {
       "source": "file:js/dashboard.js",
+      "target": "function:js/dashboard.js:invalidateCache",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/dashboard.js",
       "target": "function:js/dashboard.js:loadBody",
       "type": "defines",
       "weight": 1.0
@@ -906,6 +932,12 @@
     {
       "source": "file:js/quicklog.js",
       "target": "function:js/quicklog.js:QUICK",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/quicklog.js",
+      "target": "function:js/quicklog.js:QUICK_CNT",
       "type": "defines",
       "weight": 1.0
     },
@@ -1098,6 +1130,12 @@
     {
       "source": "file:js/app.js",
       "target": "file:js/quicklog.js",
+      "type": "imports",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/app.js",
+      "target": "file:js/dashboard.js",
       "type": "imports",
       "weight": 1.0
     },
@@ -1708,6 +1746,12 @@
       "weight": 0.8
     },
     {
+      "source": "file:js/quicklog.js",
+      "target": "file:js/dashboard.js",
+      "type": "imports",
+      "weight": 1.0
+    },
+    {
       "source": "file:js/calendar.js",
       "target": "concept:SupabaseBackend",
       "type": "depends_on",
@@ -1885,8 +1929,8 @@
     }
   ],
   "stats": {
-    "totalNodes": 69,
-    "totalEdges": 175,
+    "totalNodes": 71,
+    "totalEdges": 179,
     "modules": 11,
     "tables": 16
   }

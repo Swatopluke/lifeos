@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **generated** | 2026-08-04T22:31:23Z |
-| **commit** | `37a3598b0a1b9eb92d417fba1e2ccdd696477604` |
-| **nodes** | 69 |
-| **edges** | 175 |
+| **generated** | 2026-08-04T22:41:53Z |
+| **commit** | `b435bef3c7fb26bf8b75aa8ba5986d535b8a78eb` |
+| **nodes** | 71 |
+| **edges** | 179 |
 | **layers** | 6 |
 | **tour steps** | 5 |
 
@@ -21,18 +21,18 @@
 | config | 1 |
 | document | 3 |
 | file | 13 |
-| function | 51 |
+| function | 53 |
 
 ## Edge types
 
 | Type | Count |
 |---|---|
 | calls | 76 |
-| defines | 51 |
+| defines | 53 |
 | defines_schema | 1 |
 | depends_on | 5 |
 | documents | 3 |
-| imports | 36 |
+| imports | 38 |
 | loads | 3 |
 
 ## Layers
@@ -58,14 +58,14 @@
 |---|---|---|
 | `css/styles.css` | 0 | Design tokens and layout, 489 lines. |
 | `index.html` | 0 | Single-page shell: 7 sections, 11 canvases, login gate, bottom nav and the log-sheet modal. |
-| `js/app.js` | 0 | Bootstrap: listeners, session check, boot. 0 export(s), 25 lines. |
+| `js/app.js` | 0 | Bootstrap: listeners, session check, boot. 0 export(s), 29 lines. |
 | `js/auth.js` | 2 | Supabase email/password auth. 2 export(s), 19 lines. |
 | `js/calendar.js` | 3 | Module calendar.js. 3 export(s), 392 lines. |
 | `js/cards.js` | 6 | World-tab cards (briefing, feed, projects, news). 6 export(s), 140 lines. |
 | `js/charts.js` | 4 | Chart.js wrapper. 4 export(s), 23 lines. |
 | `js/config.js` | 5 | Supabase client & seed. 5 export(s), 30 lines. |
-| `js/dashboard.js` | 6 | Per-section loaders over a shared 28-day cache. 6 export(s), 511 lines. |
+| `js/dashboard.js` | 7 | Per-section loaders over a shared 28-day cache. 7 export(s), 518 lines. |
 | `js/history.js` | 1 | Steps history card with 24H/7D/30D toggle. 1 export(s), 90 lines. |
 | `js/nav.js` | 1 | Bottom-nav tabs with per-section lazy loading. 1 export(s), 42 lines. |
-| `js/quicklog.js` | 4 | Quick-log taps and the log-sheet modal. 4 export(s), 85 lines. |
+| `js/quicklog.js` | 5 | Quick-log taps and the log-sheet modal. 5 export(s), 103 lines. |
 | `js/utils.js` | 19 | Shared helpers (DOM, Budapest date/time). 19 export(s), 135 lines. |

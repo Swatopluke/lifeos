@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **generated** | 2026-08-04T23:32:59Z |
-| **commit** | `d15a63ae7850e83b6fe72bc74ad1aba54358bc87` |
-| **nodes** | 71 |
-| **edges** | 179 |
+| **generated** | 2026-08-17T22:10:03Z |
+| **commit** | `b76b106a1b8441028b2121bb4ae39446e10a5d0b` |
+| **nodes** | 76 |
+| **edges** | 189 |
 | **layers** | 6 |
 | **tour steps** | 5 |
 
@@ -20,26 +20,26 @@
 | concept | 1 |
 | config | 1 |
 | document | 3 |
-| file | 13 |
-| function | 53 |
+| file | 14 |
+| function | 57 |
 
 ## Edge types
 
 | Type | Count |
 |---|---|
-| calls | 77 |
-| defines | 53 |
+| calls | 81 |
+| defines | 57 |
 | defines_schema | 1 |
 | depends_on | 4 |
 | documents | 3 |
-| imports | 38 |
+| imports | 40 |
 | loads | 3 |
 
 ## Layers
 
 - **Entry & shell** (3 nodes) — Page shell, bootstrap and navigation.
 - **Auth & config** (1 nodes) — Session handling and the Supabase client.
-- **Data & services** (4 nodes) — Fetching, caching, shared helpers, logging.
+- **Data & services** (5 nodes) — Fetching, caching, shared helpers, logging.
 - **UI & rendering** (4 nodes) — Charts, cards and per-card renderers.
 - **Config** (1 nodes) — Connection configuration and seed data.
 - **Docs & protocol** (4 nodes) — Hermes protocol config and generated documentation.
@@ -56,7 +56,7 @@
 
 | File | Exports | Summary |
 |---|---|---|
-| `css/styles.css` | 0 | Design tokens and layout, 500 lines. |
+| `css/styles.css` | 0 | Design tokens and layout, 517 lines. |
 | `index.html` | 0 | Single-page shell: 7 sections, 11 canvases, login gate, bottom nav and the log-sheet modal. |
 | `js/app.js` | 0 | Bootstrap: listeners, session check, boot. 0 export(s), 29 lines. |
 | `js/auth.js` | 2 | Supabase email/password auth. 2 export(s), 19 lines. |
@@ -64,8 +64,9 @@
 | `js/cards.js` | 6 | World-tab cards (briefing, feed, projects, news). 6 export(s), 140 lines. |
 | `js/charts.js` | 4 | Chart.js wrapper. 4 export(s), 23 lines. |
 | `js/config.js` | 5 | Supabase client & seed. 5 export(s), 30 lines. |
-| `js/dashboard.js` | 7 | Per-section loaders over a shared 28-day cache. 7 export(s), 518 lines. |
+| `js/dashboard.js` | 7 | Per-section loaders over a shared 28-day cache. 7 export(s), 551 lines. |
 | `js/history.js` | 1 | Steps history card with 24H/7D/30D toggle. 1 export(s), 90 lines. |
 | `js/nav.js` | 1 | Bottom-nav tabs with per-section lazy loading. 1 export(s), 42 lines. |
 | `js/quicklog.js` | 5 | Quick-log taps and the log-sheet modal. 5 export(s), 103 lines. |
+| `js/timeline.js` | 4 | Module timeline.js. 4 export(s), 130 lines. |
 | `js/utils.js` | 19 | Shared helpers (DOM, Budapest date/time). 19 export(s), 135 lines. |

@@ -2,8 +2,9 @@
 // (28-day window); each tab function renders its subset.
 import { sb } from './config.js';
 import { $, toast, todayISO, daysAgoISO, shortDay, budaFmt, budaDay, budDay, budTime,
-         budDayStartISO, within24h, bucket24h, CSS } from './utils.js';
+         budDayStartISO, within24h, bucket24h, CSS, escapeHtml } from './utils.js';
 import { drawChart, gridOpt, baseOpts } from './charts.js';
+import { buildTodayLog } from './timeline.js';
 import { loadHistory } from './history.js';
 import { renderBriefing, renderInsights, renderFeed, renderProjects,
          renderNews } from './cards.js';
@@ -164,6 +165,9 @@ export async function loadOverview() {
 
   // -- meal log --
   renderMealLog(c);
+
+  // -- today's log: overall totals + timeline --
+  renderTodayLog(c);
 
   // -- briefing --
   renderBriefing();
@@ -484,6 +488,35 @@ function renderMealLog(c) {
   } else {
     $('mealLog').innerHTML = '<div class="meal-empty">No meals in the last 24h — tap ＋ Log to add one</div>';
   }
+}
+
+// Today's log: overall chips (beer · coffee · snus · food totals) plus a
+// chronological timeline of today's events. Same-minute beer pairs render as
+// one "beer + unicum" row — display-only rule, DB rows are never rewritten.
+function renderTodayLog(c) {
+  const day = todayISO();
+  const { items, overall } = buildTodayLog(c.mealR.data || [], c.intakeR.data || [], day);
+  const chips = [
+    ['☕', overall.coffees, 'coffee'],
+    ['🍵', overall.greenTeas, 'green tea'],
+    ['🍃', overall.matchas, 'matcha'],
+    ['⬤', overall.snus, 'snus'],
+    ['🍺', overall.beers, 'beer'],
+    ['🥃', overall.unicum, 'unicum'],
+    ['🍽', overall.mealsN, 'meals'],
+    ['🔥', Math.round(overall.kcal), 'kcal'],
+  ];
+  $('tlOverall').innerHTML = '<div class="chips">' + chips.map(([ico, v, lab]) =>
+    `<div class="chip"><span class="chip-ico">${ico}</span><b>${v}</b><span class="chip-lab">${lab}</span></div>`
+  ).join('') + '</div>';
+  $('tlTimeline').innerHTML = items.length ? items.map(it =>
+    `<div class="tl-row">
+      <span class="tl-time">${it.time}</span>
+      <span class="tl-ico">${it.icon}</span>
+      <span class="tl-lab">${escapeHtml(it.label)}</span>
+      <span class="tl-dose">${escapeHtml(it.dose)}</span>
+    </div>`).join('')
+    : '<div class="empty">Nothing logged today — tap a quick-log button or ＋ Log</div>';
 }
 
 function renderWeekDeltas(c) {

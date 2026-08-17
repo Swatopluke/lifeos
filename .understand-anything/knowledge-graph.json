@@ -1,8 +1,8 @@
 {
   "version": "1.1.0",
   "project": "LifeOS",
-  "generatedAt": "2026-08-17T22:10:03.451862+00:00",
-  "gitCommitHash": "b76b106a1b8441028b2121bb4ae39446e10a5d0b",
+  "generatedAt": "2026-08-17T22:34:56.636215+00:00",
+  "gitCommitHash": "5d0dbc3a14b980800c354731d10fc926cdfa6ec5",
   "nodes": [
     {
       "id": "file:index.html",
@@ -22,7 +22,7 @@
       "name": "Theme & layout",
       "filePath": "css/styles.css",
       "language": "css",
-      "summary": "Design tokens and layout, 517 lines.",
+      "summary": "Design tokens and layout, 520 lines.",
       "tags": [
         "styles",
         "theme"
@@ -311,7 +311,7 @@
       "name": "Per-section loaders over a shared 28-day cache (dashboard.js)",
       "filePath": "js/dashboard.js",
       "language": "javascript",
-      "summary": "Per-section loaders over a shared 28-day cache. 7 export(s), 551 lines.",
+      "summary": "Per-section loaders over a shared 28-day cache. 7 export(s), 565 lines.",
       "tags": [
         "dashboard",
         "data"
@@ -500,11 +500,21 @@
       "name": "Module timeline.js (timeline.js)",
       "filePath": "js/timeline.js",
       "language": "javascript",
-      "summary": "Module timeline.js. 4 export(s), 130 lines.",
+      "summary": "Module timeline.js. 5 export(s), 151 lines.",
       "tags": [
         "module"
       ],
       "layer": "services"
+    },
+    {
+      "id": "function:js/timeline.js:FESTIVAL",
+      "type": "function",
+      "name": "FESTIVAL",
+      "filePath": "js/timeline.js",
+      "summary": "Exported from js/timeline.js.",
+      "tags": [
+        "export"
+      ]
     },
     {
       "id": "function:js/timeline.js:UNICUM_VIEW",
@@ -517,9 +527,9 @@
       ]
     },
     {
-      "id": "function:js/timeline.js:buildTodayLog",
+      "id": "function:js/timeline.js:buildLog",
       "type": "function",
-      "name": "buildTodayLog",
+      "name": "buildLog",
       "filePath": "js/timeline.js",
       "summary": "Exported from js/timeline.js.",
       "tags": [
@@ -1007,13 +1017,19 @@
     },
     {
       "source": "file:js/timeline.js",
+      "target": "function:js/timeline.js:FESTIVAL",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "source": "file:js/timeline.js",
       "target": "function:js/timeline.js:UNICUM_VIEW",
       "type": "defines",
       "weight": 1.0
     },
     {
       "source": "file:js/timeline.js",
-      "target": "function:js/timeline.js:buildTodayLog",
+      "target": "function:js/timeline.js:buildLog",
       "type": "defines",
       "weight": 1.0
     },
@@ -1571,7 +1587,13 @@
     },
     {
       "source": "file:js/dashboard.js",
-      "target": "function:js/timeline.js:buildTodayLog",
+      "target": "function:js/timeline.js:buildLog",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:js/dashboard.js",
+      "target": "function:js/timeline.js:FESTIVAL",
       "type": "calls",
       "weight": 0.8
     },
@@ -2042,8 +2064,8 @@
     }
   ],
   "stats": {
-    "totalNodes": 76,
-    "totalEdges": 189,
+    "totalNodes": 77,
+    "totalEdges": 191,
     "modules": 12,
     "tables": 15
   }

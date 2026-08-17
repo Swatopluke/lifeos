@@ -4,7 +4,7 @@ import { sb } from './config.js';
 import { $, toast, todayISO, daysAgoISO, shortDay, budaFmt, budaDay, budDay, budTime,
          budDayStartISO, within24h, bucket24h, CSS, escapeHtml } from './utils.js';
 import { drawChart, gridOpt, baseOpts } from './charts.js';
-import { buildTodayLog } from './timeline.js';
+import { buildLog, FESTIVAL } from './timeline.js';
 import { loadHistory } from './history.js';
 import { renderBriefing, renderInsights, renderFeed, renderProjects,
          renderNews } from './cards.js';
@@ -166,8 +166,8 @@ export async function loadOverview() {
   // -- meal log --
   renderMealLog(c);
 
-  // -- today's log: overall totals + timeline --
-  renderTodayLog(c);
+  // -- sziget log: overall totals + timeline --
+  renderSzigetLog(c);
 
   // -- briefing --
   renderBriefing();
@@ -490,12 +490,19 @@ function renderMealLog(c) {
   }
 }
 
-// Today's log: overall chips (beer · coffee · snus · food totals) plus a
-// chronological timeline of today's events. Same-minute beer pairs render as
-// one "beer + unicum" row — display-only rule, DB rows are never rewritten.
-function renderTodayLog(c) {
-  const day = todayISO();
-  const { items, overall } = buildTodayLog(c.mealR.data || [], c.intakeR.data || [], day);
+// Sziget log: overall chips (beer · coffee · snus · food totals) plus a
+// day-grouped chronological timeline of the festival window. Same-minute
+// beer pairs render as one "beer + unicum" row — display-only rule, DB rows
+// are never rewritten.
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dayLabel = d => {
+  const [y, m, dd] = d.split('-').map(Number);
+  const wd = new Date(Date.UTC(y, m - 1, dd)).toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
+  return dd + ' ' + MONTHS[m - 1] + ' · ' + wd;
+};
+
+function renderSzigetLog(c) {
+  const { items, overall } = buildLog(c.mealR.data || [], c.intakeR.data || [], FESTIVAL.startISO, FESTIVAL.endISO);
   const chips = [
     ['☕', overall.coffees, 'coffee'],
     ['🍵', overall.greenTeas, 'green tea'],
@@ -509,14 +516,21 @@ function renderTodayLog(c) {
   $('tlOverall').innerHTML = '<div class="chips">' + chips.map(([ico, v, lab]) =>
     `<div class="chip"><span class="chip-ico">${ico}</span><b>${v}</b><span class="chip-lab">${lab}</span></div>`
   ).join('') + '</div>';
-  $('tlTimeline').innerHTML = items.length ? items.map(it =>
-    `<div class="tl-row">
+  if (!items.length) {
+    $('tlTimeline').innerHTML = '<div class="empty">Nothing logged in the Sziget window</div>';
+    return;
+  }
+  let cur = '';
+  $('tlTimeline').innerHTML = items.map(it => {
+    let head = '';
+    if (it.day !== cur) { cur = it.day; head = `<div class="tl-day">${dayLabel(it.day)}</div>`; }
+    return head + `<div class="tl-row">
       <span class="tl-time">${it.time}</span>
       <span class="tl-ico">${it.icon}</span>
       <span class="tl-lab">${escapeHtml(it.label)}</span>
       <span class="tl-dose">${escapeHtml(it.dose)}</span>
-    </div>`).join('')
-    : '<div class="empty">Nothing logged today — tap a quick-log button or ＋ Log</div>';
+    </div>`;
+  }).join('');
 }
 
 function renderWeekDeltas(c) {

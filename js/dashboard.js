@@ -503,6 +503,12 @@ const dayLabel = d => {
 
 function renderSzigetLog(c) {
   const { items, overall } = buildLog(c.mealR.data || [], c.intakeR.data || [], FESTIVAL.startISO, FESTIVAL.endISO);
+  // Lazily pulled in on tap: the overlay is a one-off, no reason to ship its
+  // renderer with the Overview tab.
+  $('tlapseStart').onclick = async () => {
+    const { startTimelapse } = await import('./timelapse.js');
+    startTimelapse(c.mealR.data || [], c.intakeR.data || []);
+  };
   const chips = [
     ['☕', overall.coffees, 'coffee'],
     ['🍵', overall.greenTeas, 'green tea'],

@@ -33,7 +33,8 @@ export const isBeer = r => !!(r && r.kind === 'alcohol' && BEER_SUBTYPES.has(r.s
 
 // A same-time key is day + Budapest minute: over a multi-day window two
 // beers at 19:05 on different days must NOT collapse into one pair.
-const minuteKey = r => budDay(r.taken_at) + ' ' + budTime(r.taken_at);
+// Exported so the timelapse applies the identical rule instead of its own copy.
+export const minuteKey = r => budDay(r.taken_at) + ' ' + budTime(r.taken_at);
 
 function itemFor(r) {
   const base = { t: r.taken_at, time: budTime(r.taken_at), day: budDay(r.taken_at) };

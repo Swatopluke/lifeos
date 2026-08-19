@@ -95,6 +95,7 @@
     <div class="card">
       <h2>Timeline</h2>
       <p class="csub">In order · a same-minute beer pair shows as beer + unicum</p>
+      <button class="iconbtn tl-play" id="tlapseStart">▶ Play 10s timelapse</button>
       <div id="tlTimeline"><div class="loading">Loading…</div></div>
     </div>
 
@@ -268,6 +269,23 @@
 
 <div class="toast" id="toast"></div>
 <button class="fab-refresh" id="fabRefresh" title="Refresh">⟳</button>
+
+<!-- ============ SZIGET TIMELAPSE (full screen) ============ -->
+<div class="tlapse hidden" id="tlapse">
+  <div class="tlapse-top">
+    <div class="tlp-counts" id="tlapseCounts"></div>
+    <div class="tlp-meta">
+      <span class="tlp-clock" id="tlapseClock">—</span>
+      <button class="iconbtn" id="tlapseReplay">↻ Replay</button>
+      <button class="iconbtn" id="tlapseClose">✕ Close</button>
+    </div>
+    <div class="tlp-progress"><i id="tlapseBar"></i></div>
+  </div>
+  <div class="tlapse-stage">
+    <canvas id="tlapseCanvas"></canvas>
+    <div class="tlp-empty hidden" id="tlapseEmpty">Nothing logged in the Sziget window</div>
+  </div>
+</div>
 
 <!-- ============ LOG SHEET ============ -->
 <div class="modal hidden" id="sheetWrap">

@@ -31,14 +31,20 @@ export const SERIES = [
 ];
 
 /* ---- blood alcohol ---------------------------------------------------
-   Widmark, stepped between events so the curve floors at zero instead of
-   going negative across a dry stretch and swallowing the next drink.
-     BAC% = grams ethanol / (body grams × r) × 100, less 0.015%/h burned off.
+   Widmark for the peak of each drink:
+     BAC% = grams ethanol / (body grams × r) × 100
    Units are the Hungarian 10g standard, the same one quicklog.js uses to
    derive DREHER.units, so grams = units × 10.
+
+   Clearance is a half-life, matching the alcohol curve on the Stimulant
+   clearance card (HA = 1.5h there). Note this is first-order decay, while
+   real ethanol clears zero-order at a flat ~0.015%/h once the enzyme is
+   saturated — a half-life drops a heavy night much faster than a body does.
+   It is the app's established convention and it keeps the two cards telling
+   the same story, so the panel is labelled an estimate.
 ---------------------------------------------------------------------- */
 export const WIDMARK_R = 0.68;        // body-water constant, adult male
-export const BURN_PER_H = 0.015;      // %BAC eliminated per hour
+export const HALF_LIFE_H = 1.5;       // alcohol t½, same constant as HA
 export const GRAMS_PER_UNIT = 10;
 // Last weight on record in body_metrics. The dashboard cache only reaches
 // back 60 days, so it usually has no measurement to hand and lands here.
@@ -127,24 +133,42 @@ export function countsAt(events, ms, from = 0, running = null) {
   return { counts, index: i };
 }
 
-/**
- * The BAC curve up to `ms` as {ms, bac} vertices. It is piecewise linear —
- * a vertical jump at each drink, a constant-slope burn-off between — so the
- * exact shape needs only these points, no sampling. Zero crossings are
- * emitted so the curve rests on the floor instead of cutting through it.
- */
-export function bacPolyline(events, ms, weightKg = DEFAULT_WEIGHT_KG) {
+/** Fraction of a level surviving `dtMs` of half-life decay. */
+export const decayFactor = dtMs => Math.pow(0.5, dtMs / (HALF_LIFE_H * HOUR_MS));
+
+/** Blood alcohol at `ms`, in % (g/100ml). */
+export function bacAt(events, ms, weightKg = DEFAULT_WEIGHT_KG) {
   const W = Math.max(30, +weightKg || DEFAULT_WEIGHT_KG);
+  let bac = 0, last = null;
+  for (const e of events) {
+    if (e.ms > ms) break;
+    if (!e.units) continue;
+    if (last != null) bac *= decayFactor(e.ms - last);
+    bac += bacFor(e.units, W);
+    last = e.ms;
+  }
+  return last == null ? 0 : bac * decayFactor(ms - last);
+}
+
+/**
+ * The BAC curve up to `ms` as {ms, bac} vertices: a vertical jump at each
+ * drink, then a decaying tail sampled every `sampleMs` so the exponential
+ * renders as a curve rather than a chord. Decay is asymptotic, so unlike the
+ * old linear burn-off there is no floor to clamp against.
+ */
+export function bacPolyline(events, ms, weightKg = DEFAULT_WEIGHT_KG, sampleMs = 300000) {
+  const W = Math.max(30, +weightKg || DEFAULT_WEIGHT_KG);
+  const step = Math.max(1000, sampleMs);
   const pts = [];
   let bac = 0, last = null;
   for (const e of events) {
-    if (!e.units || e.ms > ms) { if (e.ms > ms) break; continue; }
+    if (e.ms > ms) break;
+    if (!e.units) continue;
     if (last == null) {
       pts.push({ ms: e.ms, bac: 0 });
     } else {
-      const dropped = bac - BURN_PER_H * (e.ms - last) / HOUR_MS;
-      if (bac > 0 && dropped <= 0) pts.push({ ms: Math.min(last + (bac / BURN_PER_H) * HOUR_MS, e.ms), bac: 0 });
-      bac = Math.max(0, dropped);
+      for (let t = last + step; t < e.ms; t += step) pts.push({ ms: t, bac: bac * decayFactor(t - last) });
+      bac *= decayFactor(e.ms - last);
       pts.push({ ms: e.ms, bac });
     }
     bac += bacFor(e.units, W);
@@ -152,17 +176,10 @@ export function bacPolyline(events, ms, weightKg = DEFAULT_WEIGHT_KG) {
     last = e.ms;
   }
   if (last != null) {
-    const dropped = bac - BURN_PER_H * (ms - last) / HOUR_MS;
-    if (bac > 0 && dropped <= 0) pts.push({ ms: Math.min(last + (bac / BURN_PER_H) * HOUR_MS, ms), bac: 0 });
-    pts.push({ ms, bac: Math.max(0, dropped) });
+    for (let t = last + step; t < ms; t += step) pts.push({ ms: t, bac: bac * decayFactor(t - last) });
+    pts.push({ ms, bac: bac * decayFactor(ms - last) });
   }
   return pts;
-}
-
-/** Blood alcohol at `ms`, in % (g/100ml). */
-export function bacAt(events, ms, weightKg = DEFAULT_WEIGHT_KG) {
-  const pts = bacPolyline(events, ms, weightKg);
-  return pts.length ? pts[pts.length - 1].bac : 0;
 }
 
 /* ================================================================
@@ -191,6 +208,22 @@ function seriesPoints(events, key, upToIdx) {
   }
   return pts;
 }
+
+// Quadratic through the midpoints: rounds the staircase into a rising curve
+// without letting it wander off the data the way a spline would.
+function smoothPath(ctx, p) {
+  if (!p.length) return;
+  ctx.moveTo(p[0].x, p[0].y);
+  for (let i = 1; i < p.length - 1; i++) {
+    ctx.quadraticCurveTo(p[i].x, p[i].y, (p[i].x + p[i + 1].x) / 2, (p[i].y + p[i + 1].y) / 2);
+  }
+  const last = p[p.length - 1];
+  if (p.length > 1) ctx.lineTo(last.x, last.y);
+}
+
+// Frame-rate independent glide toward a target, ~tau ms to close most of the
+// gap. Used on the axis maxima so a new record does not jolt the whole chart.
+export const ease = (from, to, dtMs, tau = 140) => from + (to - from) * (1 - Math.exp(-dtMs / tau));
 
 function axes(ctx, w, h, pad, colors) {
   const plotW = w - pad.left - pad.right, plotH = h - pad.top - pad.bottom;
@@ -224,7 +257,7 @@ function dayTicks(ctx, X, startMs, xMax, top, plotH, colors, label) {
 }
 
 function drawMain(ctx, w, h, state) {
-  const { events, startMs, playMs, xMax, idx, counts, colors } = state;
+  const { events, startMs, playMs, xMax, idx, counts, colors, yMax } = state;
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = colors.bg;
   ctx.fillRect(0, 0, w, h);
@@ -232,8 +265,7 @@ function drawMain(ctx, w, h, state) {
   if (plotW <= 0 || plotH <= 0) return;
 
   // Expanding domains: x from the window start to the playhead, y from 0 to
-  // the tallest series so far, both stretched to fill the panel.
-  const yMax = Math.max(2, Math.max(...SERIES.map(s => counts[s.key])) * 1.08);
+  // the tallest series so far (eased by the caller), stretched to fill.
   const X = ms => PAD.left + ((ms - startMs) / (xMax - startMs)) * plotW;
   const Y = n => PAD.top + plotH - (n / yMax) * plotH;
 
@@ -254,18 +286,16 @@ function drawMain(ctx, w, h, state) {
   for (const s of SERIES) {
     const pts = seriesPoints(events, s.key, idx);
     if (!pts.length) continue;
+    const prevN = pts[pts.length - 1].n;
+    const xy = [{ x: X(startMs), y: Y(0) }];
+    for (const p of pts) xy.push({ x: X(p.ms), y: Y(p.n) });
+    xy.push({ x: X(playMs), y: Y(prevN) });
     ctx.strokeStyle = colors[s.key];
     ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(X(startMs), Y(0));
-    let prevN = 0;
-    for (const p of pts) {                 // step: hold, then rise
-      ctx.lineTo(X(p.ms), Y(prevN));
-      ctx.lineTo(X(p.ms), Y(p.n));
-      prevN = p.n;
-    }
-    ctx.lineTo(X(playMs), Y(prevN));
+    smoothPath(ctx, xy);
     ctx.stroke();
     const hx = X(playMs), hy = Y(prevN);
     ctx.fillStyle = colors[s.key];
@@ -291,14 +321,13 @@ function drawMain(ctx, w, h, state) {
 }
 
 function drawBac(ctx, w, h, state) {
-  const { startMs, playMs, xMax, bacPts, bacPeak, colors } = state;
+  const { startMs, playMs, xMax, bacPts, colors, bacMax: yMax } = state;
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = colors.bg;
   ctx.fillRect(0, 0, w, h);
   const plotW = w - BAC_PAD.left - BAC_PAD.right, plotH = h - BAC_PAD.top - BAC_PAD.bottom;
   if (plotW <= 0 || plotH <= 0) return;
 
-  const yMax = Math.max(0.05, bacPeak * 1.15);
   const X = ms => BAC_PAD.left + ((ms - startMs) / (xMax - startMs)) * plotW;
   const Y = v => BAC_PAD.top + plotH - (v / yMax) * plotH;
 
@@ -395,11 +424,15 @@ export function startTimelapse(meals, intake, opts = {}) {
   resize();
   window.addEventListener('resize', resize);
 
-  let raf = 0, t0 = 0, idx = 0, bacPeak = 0;
+  let raf = 0, t0 = 0, prev = 0, idx = 0;
   let counts = Object.fromEntries(SERIES.map(s => [s.key, 0]));
+  // Eased view of each axis maximum, so a new record glides in rather than
+  // snapping every line to a new scale the instant a counter ticks.
+  let yMax = 2, bacMax = 0.05;
 
   function frame(now) {
-    if (!t0) t0 = now;
+    if (!t0) { t0 = now; prev = now; }
+    const dt = Math.min(100, now - prev); prev = now;
     const p = Math.min(1, (now - t0) / DURATION_MS);
     const playMs = startMs + p * (endMs - startMs);
     const xMax = Math.max(playMs, startMs + DAY_MS * 0.05);
@@ -407,9 +440,13 @@ export function startTimelapse(meals, intake, opts = {}) {
     const stepped = countsAt(events, playMs, idx, counts);
     idx = stepped.index; counts = stepped.counts;
 
-    const bacPts = bacPolyline(events, playMs, weightKg);
+    // ~600 samples across whatever span is on screen, so the decay curve stays
+    // smooth early on when the window is only a few hours wide.
+    const bacPts = bacPolyline(events, playMs, weightKg, Math.max(30000, (playMs - startMs) / 600));
     const curBac = bacPts.length ? bacPts[bacPts.length - 1].bac : 0;
-    bacPeak = Math.max(bacPeak, ...bacPts.map(q => q.bac), 0);
+
+    yMax = ease(yMax, Math.max(2, Math.max(...SERIES.map(s => counts[s.key])) * 1.08), dt);
+    bacMax = ease(bacMax, Math.max(0.05, bacPts.reduce((m, q) => Math.max(m, q.bac), 0) * 1.15), dt);
 
     for (const s of SERIES) cntEls[s.key].textContent = counts[s.key];
     dayEl.textContent = dayText(playMs);
@@ -418,7 +455,7 @@ export function startTimelapse(meals, intake, opts = {}) {
     bacEl.style.color = colors.booze;
     barEl.style.width = (p * 100).toFixed(2) + '%';
 
-    const shared = { events, startMs, playMs, xMax, idx, counts, colors, bacPts, bacPeak };
+    const shared = { events, startMs, playMs, xMax, idx, counts, colors, bacPts, yMax, bacMax };
     drawMain(mainCtx, mw, mh, shared);
     drawBac(bacCtx, bw, bh, shared);
 
@@ -441,7 +478,7 @@ export function startTimelapse(meals, intake, opts = {}) {
   document.getElementById('tlapseClose').onclick = close;
   document.getElementById('tlapseReplay').onclick = () => {
     cancelAnimationFrame(raf);
-    t0 = 0; idx = 0; bacPeak = 0;
+    t0 = 0; prev = 0; idx = 0; yMax = 2; bacMax = 0.05;
     counts = Object.fromEntries(SERIES.map(s => [s.key, 0]));
     delete wrap.dataset.done;
     raf = requestAnimationFrame(frame);

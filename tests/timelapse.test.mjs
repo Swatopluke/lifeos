@@ -14,8 +14,9 @@ import assert from 'node:assert/strict';
 
 import {
   buildTimelapse, countsAt, bacAt, bacPolyline, dayText,
-  decayFactor, ease,
+  decayFactor, decayFrom, ease,
   SERIES, DURATION_MS, HALF_LIFE_H, WIDMARK_R, GRAMS_PER_UNIT, DEFAULT_WEIGHT_KG,
+  ZERO_ORDER_PER_H, FIRST_ORDER_BELOW,
 } from '../js/timelapse.js';
 import { overallTotals, FESTIVAL, UNICUM_VIEW } from '../js/timeline.js';
 
@@ -144,21 +145,53 @@ test('one beer raises BAC by the Widmark amount', () => {
   assert.ok(expected > 0.02 && expected < 0.04, 'a 5dl beer lands around 0.03%');
 });
 
-test('BAC halves every 1.5h and never goes negative', () => {
-  const { events } = buildTimelapse([], [beer(11, 20)], START, END);
-  const t = Date.parse(at(11, 20));
+test('above the knee BAC falls in a straight line at 0.015%/h', () => {
+  const { events } = buildTimelapse([], [beer(11, 20), beer(11, 20, 1), beer(11, 20, 2)], START, END);
+  const t = Date.parse(at(11, 20, 2));
   const peak = bacAt(events, t, W);
-  assert.equal(HALF_LIFE_H, 1.5, 'the alcohol t-half the Stimulant card already uses');
-  assert.ok(Math.abs(bacAt(events, t + HALF_LIFE_H * HOUR, W) - peak / 2) < 1e-12, 'half after one');
-  assert.ok(Math.abs(bacAt(events, t + 2 * HALF_LIFE_H * HOUR, W) - peak / 4) < 1e-12, 'a quarter after two');
-  assert.ok(bacAt(events, t + 40 * HOUR, W) > 0, 'decay is asymptotic, never exactly zero');
-  assert.ok(bacAt(events, t + 40 * HOUR, W) < 1e-6, 'but negligible inside a day');
+  assert.ok(peak > FIRST_ORDER_BELOW * 3, 'three beers puts us well above the knee');
+  for (const h of [1, 2, 3]) {
+    assert.ok(Math.abs(bacAt(events, t + h * HOUR, W) - (peak - ZERO_ORDER_PER_H * h)) < 1e-12,
+      'flat burn after ' + h + 'h');
+  }
+});
+
+test('below the knee it turns first-order and halves every 1.5h', () => {
+  assert.equal(HALF_LIFE_H, 1.5, 'the t-half the Stimulant card already uses');
+  const below = FIRST_ORDER_BELOW / 2;
+  assert.ok(Math.abs(decayFrom(below, HALF_LIFE_H * HOUR) - below / 2) < 1e-15);
+  assert.ok(Math.abs(decayFrom(below, 2 * HALF_LIFE_H * HOUR) - below / 4) < 1e-15);
+});
+
+test('the two regimes join continuously at the knee', () => {
+  const from = 0.08;
+  const toKnee = (from - FIRST_ORDER_BELOW) / ZERO_ORDER_PER_H * HOUR;
+  assert.ok(Math.abs(decayFrom(from, toKnee) - FIRST_ORDER_BELOW) < 1e-12, 'lands exactly on the knee');
+  const lo = decayFrom(from, toKnee - 1000), hi = decayFrom(from, toKnee + 1000);
+  assert.ok(lo > FIRST_ORDER_BELOW && hi < FIRST_ORDER_BELOW, 'crosses it');
+  assert.ok(lo - hi < 1e-4, 'without a step change');
+});
+
+test('decay never goes negative, however long the gap', () => {
+  for (const bac of [0.5, 0.08, 0.02, 0.001]) {
+    for (const h of [0, 1, 12, 100, 10000]) {
+      const v = decayFrom(bac, h * HOUR);
+      assert.ok(v >= 0, `${bac} after ${h}h is ${v}`);
+      assert.ok(v <= bac, 'and never rises');
+    }
+  }
+  assert.equal(decayFrom(0, HOUR), 0);
 });
 
 test('decayFactor is a pure halving', () => {
   assert.equal(decayFactor(0), 1);
   assert.ok(Math.abs(decayFactor(HALF_LIFE_H * HOUR) - 0.5) < 1e-12);
   assert.ok(Math.abs(decayFactor(3 * HALF_LIFE_H * HOUR) - 0.125) < 1e-12);
+});
+
+test('time to sober matches the drink-an-hour rule, not half of it', () => {
+  let h = 0; while (decayFrom(0.15, h * HOUR) > FIRST_ORDER_BELOW) h += 0.01;
+  assert.ok(h > 8 && h < 9.5, 'about 8.7h down to the knee, got ' + h.toFixed(2));
 });
 
 test('BAC falls monotonically while nothing is drunk', () => {

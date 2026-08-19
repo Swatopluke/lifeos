@@ -36,15 +36,18 @@ export const SERIES = [
    Units are the Hungarian 10g standard, the same one quicklog.js uses to
    derive DREHER.units, so grams = units × 10.
 
-   Clearance is a half-life, matching the alcohol curve on the Stimulant
-   clearance card (HA = 1.5h there). Note this is first-order decay, while
-   real ethanol clears zero-order at a flat ~0.015%/h once the enzyme is
-   saturated — a half-life drops a heavy night much faster than a body does.
-   It is the app's established convention and it keeps the two cards telling
-   the same story, so the panel is labelled an estimate.
+   Clearance follows the Michaelis-Menten shape rather than one rate:
+   alcohol dehydrogenase is saturated at any real drinking level, so BAC
+   falls in a straight line at ~0.015%/h — the familiar "a drink an hour" —
+   and only once it drops near the knee does it turn first-order and trail
+   off with a half-life. A pure half-life understates a heavy night about
+   twofold and halves the time to sober; a pure straight line never empties
+   and ratchets up across a festival. The knee gives both ends.
 ---------------------------------------------------------------------- */
-export const WIDMARK_R = 0.68;        // body-water constant, adult male
-export const HALF_LIFE_H = 1.5;       // alcohol t½, same constant as HA
+export const WIDMARK_R = 0.68;             // body-water constant, adult male
+export const ZERO_ORDER_PER_H = 0.015;     // flat %BAC/h while ADH is saturated
+export const FIRST_ORDER_BELOW = 0.02;     // %BAC where clearance turns first-order
+export const HALF_LIFE_H = 1.5;            // t½ below the knee, same as the card's HA
 export const GRAMS_PER_UNIT = 10;
 // Last weight on record in body_metrics. The dashboard cache only reaches
 // back 60 days, so it usually has no measurement to hand and lands here.
@@ -133,8 +136,22 @@ export function countsAt(events, ms, from = 0, running = null) {
   return { counts, index: i };
 }
 
-/** Fraction of a level surviving `dtMs` of half-life decay. */
+/** Fraction of a level surviving `dtMs` of half-life decay, below the knee. */
 export const decayFactor = dtMs => Math.pow(0.5, dtMs / (HALF_LIFE_H * HOUR_MS));
+
+/**
+ * `bac` after `dtMs` of clearance: a straight 0.015%/h down to the knee at
+ * 0.02%, a half-life below it. Continuous at the knee and asymptotic to zero,
+ * so it needs no floor — it can never go negative.
+ */
+export function decayFrom(bac, dtMs) {
+  if (!(bac > 0) || dtMs <= 0) return Math.max(0, bac || 0);
+  const h = dtMs / HOUR_MS;
+  if (bac <= FIRST_ORDER_BELOW) return bac * decayFactor(dtMs);
+  const toKnee = (bac - FIRST_ORDER_BELOW) / ZERO_ORDER_PER_H;   // hours of flat burn left
+  if (h <= toKnee) return bac - ZERO_ORDER_PER_H * h;
+  return FIRST_ORDER_BELOW * decayFactor((h - toKnee) * HOUR_MS);
+}
 
 /** Blood alcohol at `ms`, in % (g/100ml). */
 export function bacAt(events, ms, weightKg = DEFAULT_WEIGHT_KG) {
@@ -143,18 +160,17 @@ export function bacAt(events, ms, weightKg = DEFAULT_WEIGHT_KG) {
   for (const e of events) {
     if (e.ms > ms) break;
     if (!e.units) continue;
-    if (last != null) bac *= decayFactor(e.ms - last);
+    if (last != null) bac = decayFrom(bac, e.ms - last);
     bac += bacFor(e.units, W);
     last = e.ms;
   }
-  return last == null ? 0 : bac * decayFactor(ms - last);
+  return last == null ? 0 : decayFrom(bac, ms - last);
 }
 
 /**
  * The BAC curve up to `ms` as {ms, bac} vertices: a vertical jump at each
- * drink, then a decaying tail sampled every `sampleMs` so the exponential
- * renders as a curve rather than a chord. Decay is asymptotic, so unlike the
- * old linear burn-off there is no floor to clamp against.
+ * drink, then a decaying tail sampled every `sampleMs` so the bend at the
+ * knee and the exponential below it render as curves rather than chords.
  */
 export function bacPolyline(events, ms, weightKg = DEFAULT_WEIGHT_KG, sampleMs = 300000) {
   const W = Math.max(30, +weightKg || DEFAULT_WEIGHT_KG);
@@ -167,8 +183,8 @@ export function bacPolyline(events, ms, weightKg = DEFAULT_WEIGHT_KG, sampleMs =
     if (last == null) {
       pts.push({ ms: e.ms, bac: 0 });
     } else {
-      for (let t = last + step; t < e.ms; t += step) pts.push({ ms: t, bac: bac * decayFactor(t - last) });
-      bac *= decayFactor(e.ms - last);
+      for (let t = last + step; t < e.ms; t += step) pts.push({ ms: t, bac: decayFrom(bac, t - last) });
+      bac = decayFrom(bac, e.ms - last);
       pts.push({ ms: e.ms, bac });
     }
     bac += bacFor(e.units, W);
@@ -176,8 +192,8 @@ export function bacPolyline(events, ms, weightKg = DEFAULT_WEIGHT_KG, sampleMs =
     last = e.ms;
   }
   if (last != null) {
-    for (let t = last + step; t < ms; t += step) pts.push({ ms: t, bac: bac * decayFactor(t - last) });
-    pts.push({ ms, bac: bac * decayFactor(ms - last) });
+    for (let t = last + step; t < ms; t += step) pts.push({ ms: t, bac: decayFrom(bac, t - last) });
+    pts.push({ ms, bac: decayFrom(bac, ms - last) });
   }
   return pts;
 }

@@ -275,6 +275,7 @@
   <div class="tlapse-top">
     <div class="tlp-counts" id="tlapseCounts"></div>
     <div class="tlp-meta">
+      <span class="tlp-day" id="tlapseDay">—</span>
       <span class="tlp-clock" id="tlapseClock">—</span>
       <button class="iconbtn" id="tlapseReplay">↻ Replay</button>
       <button class="iconbtn" id="tlapseClose">✕ Close</button>
@@ -282,8 +283,18 @@
     <div class="tlp-progress"><i id="tlapseBar"></i></div>
   </div>
   <div class="tlapse-stage">
-    <canvas id="tlapseCanvas"></canvas>
-    <div class="tlp-empty hidden" id="tlapseEmpty">Nothing logged in the Sziget window</div>
+    <div class="tlp-main">
+      <canvas id="tlapseCanvas"></canvas>
+      <div class="tlp-empty hidden" id="tlapseEmpty">Nothing logged in the Sziget window</div>
+    </div>
+    <div class="tlp-bac">
+      <canvas id="tlapseBacCanvas"></canvas>
+      <div class="tlp-bac-now">
+        <span class="tlp-bac-lab">Blood alcohol</span>
+        <b id="tlapseBacNow">0.000%</b>
+        <span class="tlp-bac-sub" id="tlapseBacSub">Widmark</span>
+      </div>
+    </div>
   </div>
 </div>
 

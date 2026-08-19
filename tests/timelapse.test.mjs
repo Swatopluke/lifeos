@@ -12,8 +12,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildTimelapse, countsAt, SERIES, DURATION_MS } from '../js/timelapse.js';
-import { overallTotals, FESTIVAL } from '../js/timeline.js';
+import {
+  buildTimelapse, countsAt, bacAt, bacPolyline, dayText,
+  SERIES, DURATION_MS, BURN_PER_H, WIDMARK_R, GRAMS_PER_UNIT, DEFAULT_WEIGHT_KG,
+} from '../js/timelapse.js';
+import { overallTotals, FESTIVAL, UNICUM_VIEW } from '../js/timeline.js';
 
 const START = FESTIVAL.startISO;
 const END = FESTIVAL.endISO;
@@ -124,4 +127,102 @@ test('final counters match the Sziget log Overall chips', () => {
   // beer to a unicum, so 9 - 3 = 6 beers and 3 unicums.
   assert.equal(totals.beer, 6);
   assert.equal(totals.unicum, 3);
+});
+
+/* ---- blood alcohol ---------------------------------------------------- */
+
+const HOUR = 3600000;
+const W = 100;                                   // round number keeps the sums readable
+
+test('one beer raises BAC by the Widmark amount', () => {
+  const { events } = buildTimelapse([], [beer(11, 20)], START, END);
+  const t = Date.parse(at(11, 20));
+  // 1.97u -> 19.7g into 100kg: 19.7 / (100000 * 0.68) * 100
+  const expected = (1.97 * GRAMS_PER_UNIT) / (W * 1000 * WIDMARK_R) * 100;
+  assert.ok(Math.abs(bacAt(events, t, W) - expected) < 1e-9);
+  assert.ok(expected > 0.02 && expected < 0.04, 'a 5dl beer lands around 0.03%');
+});
+
+test('BAC burns off at 0.015%/h and never goes negative', () => {
+  const { events } = buildTimelapse([], [beer(11, 20)], START, END);
+  const t = Date.parse(at(11, 20));
+  const peak = bacAt(events, t, W);
+  const afterAnHour = bacAt(events, t + HOUR, W);
+  assert.ok(Math.abs(peak - afterAnHour - BURN_PER_H) < 1e-9, 'exactly one hour of burn');
+  assert.equal(bacAt(events, t + 40 * HOUR, W), 0, 'floors at zero, never negative');
+});
+
+test('a dry stretch does not bank negative credit against the next drink', () => {
+  // one beer, two days of nothing, then another: the second peak must equal
+  // the first, not be cancelled out by the gap.
+  const { events } = buildTimelapse([], [beer(10, 12), beer(13, 12)], START, END);
+  const first = bacAt(events, Date.parse(at(10, 12)), W);
+  const second = bacAt(events, Date.parse(at(13, 12)), W);
+  assert.ok(Math.abs(first - second) < 1e-9);
+});
+
+test('a collapsed pair contributes one beer plus one unicum of ethanol', () => {
+  const { events, totals } = buildTimelapse([], [beer(11, 20, 51), beer(11, 20, 51)], START, END);
+  assert.equal(totals.beer, 1);
+  assert.equal(totals.unicum, 1);
+  const units = events.reduce((a, e) => a + e.units, 0);
+  assert.ok(Math.abs(units - (1.97 + UNICUM_VIEW.units)) < 1e-9,
+    'the second tap counts as a shot, not a second pint');
+});
+
+test('alcohol that is neither beer nor a pair still moves BAC', () => {
+  const rows = [{ kind: 'alcohol', subtype: 'palinka', taken_at: at(12, 21), alcohol_units: 2 }];
+  const { events, totals } = buildTimelapse([], rows, START, END);
+  assert.equal(totals.beer, 0, 'it is not a beer');
+  assert.equal(totals.unicum, 0, 'and not a collapsed pair, so no unicum chip');
+  assert.ok(bacAt(events, Date.parse(at(12, 21)), W) > 0, 'but it is still alcohol');
+});
+
+test('a nondrinking window reads zero throughout', () => {
+  const { events } = buildTimelapse([], [snus(11, 9), coffee(11, 11)], START, END);
+  assert.equal(bacAt(events, Date.parse(at(11, 12)), W), 0);
+  assert.deepEqual(bacPolyline(events, Date.parse(at(11, 12)), W), []);
+});
+
+test('the curve is piecewise linear with a vertex per drink', () => {
+  // an hour apart, so 0.015% of burn cannot exhaust the ~0.029% peak and the
+  // curve never reaches the floor between them
+  const { events } = buildTimelapse([], [beer(11, 20), beer(11, 21)], START, END);
+  const pts = bacPolyline(events, Date.parse(at(11, 22)), W);
+  // drink one (floor + peak), drink two (burnt-down + peak), tail to playhead
+  assert.equal(pts.length, 5);
+  assert.ok(pts.every((p, i) => i === 0 || p.ms >= pts[i - 1].ms), 'vertices run forward');
+  assert.ok(pts.every(p => p.bac >= 0), 'never dips below the floor');
+  assert.ok(pts.slice(1, -1).every(p => p.bac > 0), 'and does not touch it mid-session');
+});
+
+test('a long enough gap puts a zero vertex before the next drink', () => {
+  // ~0.029% burns off in just under two hours, so a three-hour gap must land
+  // the curve on the floor and hold it there rather than crossing below.
+  const { events } = buildTimelapse([], [beer(11, 20), beer(11, 23)], START, END);
+  const pts = bacPolyline(events, Date.parse(at(11, 23)), W);
+  const t1 = Date.parse(at(11, 20)), t2 = Date.parse(at(11, 23));
+  const floor = pts.find(p => p.bac === 0 && p.ms > t1 && p.ms <= t2);
+  assert.ok(floor, 'a zero crossing is recorded');
+  assert.ok(floor.ms < t2, 'and it happens before the next drink');
+  assert.ok(pts.every(p => p.bac >= 0));
+});
+
+test('heavier drinker, lower peak', () => {
+  const { events } = buildTimelapse([], [beer(11, 20)], START, END);
+  const t = Date.parse(at(11, 20));
+  assert.ok(bacAt(events, t, 120) < bacAt(events, t, 80));
+});
+
+test('weight falls back to the last recorded figure when none is passed', () => {
+  const { events } = buildTimelapse([], [beer(11, 20)], START, END);
+  const t = Date.parse(at(11, 20));
+  assert.equal(bacAt(events, t), bacAt(events, t, DEFAULT_WEIGHT_KG));
+  assert.equal(DEFAULT_WEIGHT_KG, 95);
+});
+
+test('the header day is the Budapest day, whatever the host zone', () => {
+  // 00:30 Budapest on Aug 13 is still Aug 12 in UTC — the header must say 13.
+  assert.match(dayText(Date.parse(at(13, 0, 30))), /13 Aug/);
+  assert.match(dayText(Date.parse(at(10, 6))), /10 Aug/);
 });

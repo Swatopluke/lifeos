@@ -507,7 +507,11 @@ function renderSzigetLog(c) {
   // renderer with the Overview tab.
   $('tlapseStart').onclick = async () => {
     const { startTimelapse } = await import('./timelapse.js');
-    startTimelapse(c.mealR.data || [], c.intakeR.data || []);
+    // Latest weight on record calibrates the BAC panel. The cache only reaches
+    // back 60 days, so this is usually absent and timelapse.js falls back.
+    const weighed = (c.bodyR.data || []).filter(r => r.weight_kg != null);
+    startTimelapse(c.mealR.data || [], c.intakeR.data || [],
+      { weightKg: weighed.length ? +weighed[weighed.length - 1].weight_kg : undefined });
   };
   const chips = [
     ['☕', overall.coffees, 'coffee'],

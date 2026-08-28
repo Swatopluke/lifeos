@@ -6,6 +6,7 @@ import { $, toast, todayISO, daysAgoISO, shortDay, budaFmt, budaDay, budDay, bud
 import { drawChart, gridOpt, baseOpts } from './charts.js';
 import { buildLog, FESTIVAL } from './timeline.js';
 import { loadHistory } from './history.js';
+import { loadVitals } from './vitals.js';
 import { renderBriefing, renderInsights, renderFeed, renderProjects,
          renderNews } from './cards.js';
 import { renderAhead } from './calendar.js';
@@ -267,6 +268,9 @@ export async function loadBody() {
 
   // -- steps (delegated to history.js for the chart + range selector) --
   loadHistory();
+
+  // -- watch vitals (HR / HRV / SpO2 / wrist temp from health_raw) --
+  loadVitals();
 }
 
 

@@ -8,4 +8,6 @@ export.zip
 apple_health_export/
 health_backfill.csv
 sleep_stages.csv
+backfill_payload.json
+supabase/
 cron_reports/

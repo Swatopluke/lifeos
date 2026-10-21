@@ -1,3 +1,7 @@
+@AGENTS.md
+
+- Commit directly to main. Never create branches.
+
 # LifeOS
 
 A single-page personal-tracking web app: sleep, intake (food / stimulants / alcohol), body metrics, training, and a curated "world" feed (weather, dev, news). Data is stored in a remote **Supabase** (Postgres) backend and visualized with **Chart.js**.
